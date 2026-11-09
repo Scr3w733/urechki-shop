@@ -1,0 +1,23 @@
+
+
+services:
+  db:
+    image: postgres:16
+    container_name: urechki_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: urechki_main
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - urechki_network
+
+volumes:
+  db_data:
+
+networks:
+  urechki_network:
+    driver: bridge
