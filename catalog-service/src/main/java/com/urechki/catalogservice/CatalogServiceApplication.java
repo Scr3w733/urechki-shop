@@ -1,3 +1,4 @@
+
 package com.urechki.catalogservice;
 
 import org.springframework.boot.SpringApplication;
