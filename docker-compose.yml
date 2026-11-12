@@ -1,5 +1,4 @@
 services:
-  # 1. База данных PostgreSQL
   db:
     image: postgres:16
     container_name: urechki_db
@@ -14,7 +13,14 @@ services:
     networks:
       - urechki_network
 
-  # 2. Сервис Каталога
+  redis:
+    image: redis:alpine
+    container_name: urechki_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - urechki_network
+
   catalog-service:
     build: ./catalog-service
     container_name: catalog_service
@@ -24,12 +30,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     depends_on:
       - db
+      - redis
     networks:
       - urechki_network
 
-  # 3. Сервис CRM
   crm-service:
     build: ./crm-service
     container_name: crm_service
@@ -44,7 +52,6 @@ services:
     networks:
       - urechki_network
 
-  # 4. Сервис Заказов
   order-service:
     build: ./order-service
     container_name: order_service
@@ -56,10 +63,29 @@ services:
       SPRING_DATASOURCE_PASSWORD: password
     depends_on:
       - db
+      - payment-service
     networks:
       - urechki_network
 
-  # 5. Фронтенд (Сайт)
+  notification-service:
+    build: ./notification-service
+    container_name: notification_service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - order-service
+    networks:
+      - urechki_network
+
+  # НОВЫЙ СЕРВИС ОПЛАТЫ
+  payment-service:
+    build: ./payment-service
+    container_name: payment_service
+    ports:
+      - "8085:8085"
+    networks:
+      - urechki_network
+
   frontend:
     build: ./frontend
     container_name: urechki_frontend
@@ -68,17 +94,6 @@ services:
     depends_on:
       - catalog-service
       - crm-service
-      - order-service
-    networks:
-      - urechki_network
-
-  # 6. Сервис Уведомлений
-  notification-service:
-    build: ./notification-service
-    container_name: notification_service
-    ports:
-      - "8084:8084"
-    depends_on:
       - order-service
     networks:
       - urechki_network

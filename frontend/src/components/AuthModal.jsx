@@ -9,16 +9,25 @@ export default function AuthModal({ isOpen, onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Клиент');
+  const [error, setError] = useState(null);
   const { login, register } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    
+    let result;
     if (isLogin) {
-      login(email, password);
+      result = await login(email, password);
     } else {
-      register(name, email, password, role);
+      result = await register(name, email, password, role);
     }
-    onClose();
+
+    if (result.success) {
+      onClose();
+    } else {
+      setError(result.message);
+    }
   };
 
   return (
@@ -32,6 +41,8 @@ export default function AuthModal({ isOpen, onClose }) {
               {isLogin ? 'Вход в аккаунт' : 'Регистрация'}
             </h2>
 
+            {error && <div style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid #ff4444', color: '#ff4444', padding: '10px', borderRadius: '8px', marginBottom: '20px', textAlign: 'center' }}>{error}</div>}
+
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {!isLogin && (
                 <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 15px' }}>
@@ -42,22 +53,20 @@ export default function AuthModal({ isOpen, onClose }) {
               
               <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 15px' }}>
                 <Mail size={20} color="#888" />
-                <input type="email" placeholder="Email (например, admin@mail.ru)" required value={email} onChange={e => setEmail(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
+                <input type="email" placeholder="Email (ivan@mail.ru)" required value={email} onChange={e => setEmail(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 15px' }}>
                 <Lock size={20} color="#888" />
-                <input type="password" placeholder="Пароль" required value={password} onChange={e => setPassword(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
+                <input type="password" placeholder="Пароль (123)" required value={password} onChange={e => setPassword(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
               </div>
 
               {!isLogin && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ color: '#aaa', fontSize: '0.9rem' }}>Выберите роль (для демо):</label>
                   <select value={role} onChange={e => setRole(e.target.value)} style={{ background: '#111', border: '1px solid #333', color: '#fff', padding: '12px', borderRadius: '8px', outline: 'none' }}>
                     <option value="Клиент">Клиент</option>
                     <option value="Менеджер">Менеджер</option>
                     <option value="Владелец">Владелец</option>
-                    <option value="Разработчик">Разработчик</option>
                   </select>
                 </div>
               )}
@@ -67,7 +76,7 @@ export default function AuthModal({ isOpen, onClose }) {
               </motion.button>
             </form>
 
-            <p style={{ color: '#aaa', textAlign: 'center', marginTop: '20px', cursor: 'pointer', fontSize: '0.9rem' }} onClick={() => setIsLogin(!isLogin)}>
+            <p style={{ color: '#aaa', textAlign: 'center', marginTop: '20px', cursor: 'pointer', fontSize: '0.9rem' }} onClick={() => { setIsLogin(!isLogin); setError(null); }}>
               {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войти'}
             </p>
           </motion.div>

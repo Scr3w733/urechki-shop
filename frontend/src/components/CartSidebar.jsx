@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { Link } from 'react-router-dom'; // <-- Добавили Link
+import { Link } from 'react-router-dom';
 
 export default function CartSidebar() {
   const { cart, isCartOpen, setIsCartOpen, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
@@ -9,6 +9,11 @@ export default function CartSidebar() {
   const total = getTotal();
   const delivery = total > 0 && total < 2000 ? 300 : 0;
   const finalTotal = total + delivery;
+  
+  // Логика прогресс-бара
+  const freeDeliveryThreshold = 2000;
+  const remaining = freeDeliveryThreshold - total;
+  const progress = Math.min((total / freeDeliveryThreshold) * 100, 100);
 
   return (
     <AnimatePresence>
@@ -25,6 +30,18 @@ export default function CartSidebar() {
               <X onClick={() => setIsCartOpen(false)} style={{ cursor: 'pointer', color: '#fff' }} size={28} />
             </div>
 
+            {/* Прогресс-бар бесплатной доставки */}
+            {cart.length > 0 && total < freeDeliveryThreshold && (
+              <div style={{ background: '#111', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #333' }}>
+                <p style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Truck size={16} color="#d4af37" /> До бесплатной доставки: <strong style={{color: '#d4af37'}}>{remaining} ₽</strong>
+                </p>
+                <div style={{ width: '100%', height: '6px', background: '#333', borderRadius: '3px', overflow: 'hidden' }}>
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} style={{ height: '100%', background: 'linear-gradient(90deg, #d4af37, #ffdf00)' }} />
+                </div>
+              </div>
+            )}
+
             {cart.length > 0 && (
               <button onClick={clearCart} style={{ background: 'transparent', border: 'none', color: '#ff4444', textAlign: 'left', marginBottom: '15px', cursor: 'pointer', fontSize: '0.9rem' }}>Очистить корзину</button>
             )}
@@ -34,6 +51,7 @@ export default function CartSidebar() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#555' }}>
                   <ShoppingBag size={80} style={{ marginBottom: '20px', opacity: 0.5 }} />
                   <p>Ваша корзина пуста.</p>
+                  <button onClick={() => setIsCartOpen(false)} style={{ marginTop: '20px', padding: '10px 20px', background: 'transparent', border: '1px solid #d4af37', color: '#d4af37', borderRadius: '8px', cursor: 'pointer' }}>За покупками</button>
                 </div>
               ) : (
                 cart.map(item => (
