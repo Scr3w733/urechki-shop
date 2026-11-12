@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.util.HashMap; // Добавили импорт
 import java.util.List;
 import java.util.Map;
 
@@ -27,10 +28,10 @@ public class OrderController {
     @PostMapping
     public Order createOrder(@RequestBody Order order) {
         // 1. Идем в каталог за товаром (порт 8080)
-        Map<String, Object> product = restTemplate.getForObject("http://localhost:8080/api/products/" + order.getProductId(), Map.class);
+        Map<String, Object> product = restTemplate.getForObject("http://catalog-service:8080/api/products/" + order.getProductId(), Map.class);
         
         // 2. Идем в CRM за клиентом (порт 8081)
-        Map<String, Object> customer = restTemplate.getForObject("http://localhost:8081/api/customers/" + order.getCustomerId(), Map.class);
+        Map<String, Object> customer = restTemplate.getForObject("http://crm-service:8081/api/customers/" + order.getCustomerId(), Map.class);
 
         // 3. Считаем цену
         BigDecimal price = new BigDecimal(product.get("price").toString());
@@ -41,6 +42,21 @@ public class OrderController {
         
         order.setFinalPrice(total.subtract(discountAmount));
 
-        return orderRepository.save(order);
+        // 4. Сохраняем заказ в БД
+        Order savedOrder = orderRepository.save(order);
+
+        // 5. Отправляем уведомление в новый notification-service (порт 8084)
+        try {
+            Map<String, String> notification = new HashMap<>();
+            notification.put("email", "client@example.com"); // В реальности тут был бы email клиента из CRM
+            notification.put("message", "Ваш заказ №" + savedOrder.getId() + " на сумму " + savedOrder.getFinalPrice() + " руб. успешно оформлен!");
+            
+            restTemplate.postForObject("http://notification-service:8084/api/notifications/send", notification, String.class);
+        } catch (Exception e) {
+            System.out.println("Не удалось отправить уведомление: " + e.getMessage());
+        }
+
+        // 6. Возвращаем сохраненный заказ
+        return savedOrder;
     }
 }

@@ -1,6 +1,5 @@
-
-
 services:
+  # 1. База данных PostgreSQL
   db:
     image: postgres:16
     container_name: urechki_db
@@ -9,9 +8,78 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: urechki_main
     ports:
-            - "5433:5432"
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - urechki_network
+
+  # 2. Сервис Каталога
+  catalog-service:
+    build: ./catalog-service
+    container_name: catalog_service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      - db
+    networks:
+      - urechki_network
+
+  # 3. Сервис CRM
+  crm-service:
+    build: ./crm-service
+    container_name: crm_service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      - db
+    networks:
+      - urechki_network
+
+  # 4. Сервис Заказов
+  order-service:
+    build: ./order-service
+    container_name: order_service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      - db
+    networks:
+      - urechki_network
+
+  # 5. Фронтенд (Сайт)
+  frontend:
+    build: ./frontend
+    container_name: urechki_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - catalog-service
+      - crm-service
+      - order-service
+    networks:
+      - urechki_network
+
+  # 6. Сервис Уведомлений
+  notification-service:
+    build: ./notification-service
+    container_name: notification_service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - order-service
     networks:
       - urechki_network
 
