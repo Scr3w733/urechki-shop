@@ -38,6 +38,10 @@ const BlogPost = lazy(() => import('./pages/BlogPost'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const AppPage = lazy(() => import('./pages/AppPage'));
+const Loyalty = lazy(() => import('./pages/Loyalty'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Analytics = lazy(() => import('./pages/Analytics'));
 
 const routes = [
   ['/', Home],
@@ -57,6 +61,10 @@ const routes = [
   ['/blog/:id', BlogPost],
   ['/admin', AdminDashboard],
   ['/app', AppPage],
+  ['/loyalty', Loyalty],
+  ['/track', TrackOrder],
+  ['/favorites', Favorites],
+  ['/analytics', Analytics],
 ];
 
 function RouteLoader() {

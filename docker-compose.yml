@@ -143,6 +143,128 @@ services:
       retries: 20
       start_period: 30s
 
+  loyalty-service:
+    build: ./loyalty-service
+    container_name: loyalty_service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8086/api/loyalty/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  tracking-service:
+    build: ./tracking-service
+    container_name: tracking_service
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8087/api/tracking/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  favorites-service:
+    build: ./favorites-service
+    container_name: favorites_service
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8088/api/favorites/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  analytics-service:
+    build: ./analytics-service
+    container_name: analytics_service
+    ports:
+      - "8089:8089"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8089/api/analytics/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  mobile-gateway-service:
+    build: ./mobile-gateway-service
+    container_name: mobile_gateway_service
+    ports:
+      - "8090:8090"
+    environment:
+      APP_SERVICES_CATALOG: http://catalog-service:8080
+      APP_SERVICES_CRM: http://crm-service:8081
+      APP_SERVICES_ORDERS: http://order-service:8082
+      APP_SERVICES_LOYALTY: http://loyalty-service:8086
+      APP_SERVICES_TRACKING: http://tracking-service:8087
+      APP_SERVICES_FAVORITES: http://favorites-service:8088
+      APP_SERVICES_NOTIFICATIONS: http://notification-service:8084
+      APP_SERVICES_ANALYTICS: http://analytics-service:8089
+    depends_on:
+      catalog-service:
+        condition: service_healthy
+      crm-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      loyalty-service:
+        condition: service_healthy
+      tracking-service:
+        condition: service_healthy
+      favorites-service:
+        condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+    networks:
+      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8090/api/mobile/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   frontend:
     build: ./frontend
     container_name: urechki_frontend
@@ -158,6 +280,16 @@ services:
       payment-service:
         condition: service_healthy
       notification-service:
+        condition: service_healthy
+      loyalty-service:
+        condition: service_healthy
+      tracking-service:
+        condition: service_healthy
+      favorites-service:
+        condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+      mobile-gateway-service:
         condition: service_healthy
     networks:
       - urechki_network

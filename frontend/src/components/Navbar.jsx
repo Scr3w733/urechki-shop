@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone, ChevronDown } from 'lucide-react';
+import { BarChart3, Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone, ChevronDown, Gift, Heart, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
@@ -19,6 +19,7 @@ const links = [
 export default function Navbar() {
   const { getCount, openCart } = useCart();
   const { user, isAdmin, logout } = useAuth();
+  const isOwner = user?.role === 'Владелец';
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -58,6 +59,13 @@ export default function Navbar() {
     ? products.filter(p => p.name?.toLowerCase().includes(search.toLowerCase())).slice(0, 6)
     : [];
 
+  const serviceLinks = [
+    { to: '/loyalty', label: 'Бонусы', icon: Gift },
+    { to: '/track', label: 'Отследить', icon: Truck },
+    { to: '/favorites', label: 'Избранное', icon: Heart },
+    ...(isOwner ? [{ to: '/analytics', label: 'Аналитика', icon: BarChart3 }] : []),
+  ];
+
   const submitSearch = (e) => {
     e.preventDefault();
     if (!search.trim()) return;
@@ -79,6 +87,11 @@ export default function Navbar() {
             {links.map(link => (
               <NavLink key={link.to} to={link.to} end={link.end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
                 {link.label}
+              </NavLink>
+            ))}
+            {serviceLinks.map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <Icon size={15} /> {label}
               </NavLink>
             ))}
           </nav>
@@ -128,6 +141,10 @@ export default function Navbar() {
                   {accountOpen && (
                     <motion.div className="account-menu" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
                       <Link to="/profile"><User size={16} /> Мой профиль</Link>
+                      <Link to="/favorites"><Heart size={16} /> Избранное</Link>
+                      <Link to="/loyalty"><Gift size={16} /> Бонусы</Link>
+                      <Link to="/track"><Truck size={16} /> Отследить заказ</Link>
+                      {isOwner && <Link to="/analytics"><BarChart3 size={16} /> Аналитика</Link>}
                       {isAdmin && <Link to="/admin"><Settings size={16} /> Админка</Link>}
                       <Link to="/app"><Smartphone size={16} /> Приложение</Link>
                       <button onClick={() => { logout(); setAccountOpen(false); }}>Выйти</button>
@@ -157,7 +174,7 @@ export default function Navbar() {
         {mobileOpen && (
           <motion.div className="mobile-menu" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
             <div className="container stack" style={{ padding: '18px 0' }}>
-              {[...links, { to: '/roulette', label: 'Рулетка' }, { to: '/merch', label: 'Мерч' }, { to: '/app', label: 'Приложение' }, { to: '/reviews', label: 'Отзывы' }, { to: '/contacts', label: 'Контакты' }].map(link => (
+              {[...links, ...serviceLinks, { to: '/roulette', label: 'Рулетка' }, { to: '/merch', label: 'Мерч' }, { to: '/app', label: 'Приложение' }, { to: '/reviews', label: 'Отзывы' }, { to: '/contacts', label: 'Контакты' }].map(link => (
                 <Link key={link.to} to={link.to} className="nav-link">{link.label}</Link>
               ))}
               {isAdmin && <Link to="/admin" className="nav-link text-accent">Админка</Link>}

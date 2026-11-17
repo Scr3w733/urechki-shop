@@ -47,6 +47,11 @@ docker compose restart              # перезапустить контейн�
 | Заказы | http://localhost:8082/api/orders |
 | Уведомления | http://localhost:8084/api/notifications/send |
 | Оплата | http://localhost:8085/api/payments/process |
+| Лояльность | http://localhost:8086/api/loyalty/health |
+| Отслеживание заказов | http://localhost:8087/api/tracking/health |
+| Избранное | http://localhost:8088/api/favorites/health |
+| Аналитика | http://localhost:8089/api/analytics/health |
+| API для мобильного приложения | http://localhost:8090/api/mobile/health |
 | PostgreSQL | localhost:5433 (БД `urechki_main`, пользователь `admin`, пароль `password`) |
 | Redis | localhost:6379 |
 
@@ -91,6 +96,8 @@ curl http://localhost/api/orders
 - Поддержка промокодов (`URE4KA`, `BEER5`, `BEER10`, `BEER15`, `CASH500`) и бонусов на сервере.
 - Оплата с `BigDecimal`, лимитом, идентификатором транзакции и защитой от повторного списания.
 - История уведомлений, healthcheck-и и понятные JSON-ошибки вместо 500-х stack trace.
+- Новые сервисы: лояльность с уровнями и кэшбэком, отслеживание доставки, синхронное избранное, аналитика событий и единый API для будущего мобильного приложения.
+- Локальные SVG-иллюстрации для товаров, главной и превью приложения — работают офлайн и не зависят от генератора картинок.
 
 ## Админ-аккаунт и промокоды
 
@@ -120,3 +127,9 @@ admin@urechki.ru
 | GET | `/api/orders/customer/{id}` | Заказы клиента |
 | POST | `/api/payments/process` | Оплата (используется заказами) |
 | GET | `/api/notifications?email=` | История уведомлений |
+| GET | `/api/loyalty/accounts/{customerId}` | Уровень лояльности и баланс баллов |
+| POST | `/api/loyalty/quote` | Расчёт кэшбэка и скидки `{ "customerId": 1, "amount": 1000 }` |
+| GET | `/api/tracking/shipments/{orderId}` | Статус доставки и история событий |
+| GET/POST/DELETE | `/api/favorites/{customerId}` | Синхронное избранное |
+| GET | `/api/analytics/summary`, `/api/analytics/funnel` | Метрики и воронка |
+| GET | `/api/mobile/home`, `/api/mobile/profile/{id}` | Агрегированные данные для приложения |
