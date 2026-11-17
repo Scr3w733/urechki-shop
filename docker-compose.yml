@@ -67,6 +67,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: password
+      APP_ADMIN_EMAIL: admin@urechki.ru
     depends_on:
       db:
         condition: service_healthy
@@ -87,7 +88,7 @@ services:
     networks:
       - urechki_network
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8085"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8085/api/payments/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -102,6 +103,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/urechki_main
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: password
+      APP_SERVICES_CATALOG: http://catalog-service:8080
+      APP_SERVICES_CRM: http://crm-service:8081
+      APP_SERVICES_PAYMENT: http://payment-service:8085
+      APP_SERVICES_NOTIFICATION: http://notification-service:8084
     depends_on:
       db:
         condition: service_healthy
@@ -131,7 +136,7 @@ services:
     networks:
       - urechki_network
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8084"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8084/api/notifications/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20

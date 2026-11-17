@@ -1,70 +1,211 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, CornerDownLeft } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
+import { Compass, CornerDownLeft, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Modal from './Modal';
 
-const commands = [
-  { id: 1, name: 'Главная страница', path: '/', type: 'Страница' },
-  { id: 2, name: 'Каталог товаров', path: '/catalog', type: 'Страница' },
-  { id: 3, name: 'Конструктор мерча', path: '/merch', type: 'Страница' },
-  { id: 4, name: 'Колесо Фортуны', path: '/roulette', type: 'Страница' },
-  { id: 5, name: 'Личный кабинет', path: '/profile', type: 'Страница' },
-  { id: 6, name: 'История и блог', path: '/blog', type: 'Страница' },
-  { id: 7, name: 'Мобильное приложение', path: '/app', type: 'Страница' },
+const QUICK_LINKS = [
+  { id: 'link-catalog', name: 'Каталог', path: '/catalog', type: 'Страница' },
+  { id: 'link-profile', name: 'Профиль', path: '/profile', type: 'Страница' },
+  { id: 'link-roulette', name: 'Рулетка', path: '/roulette', type: 'Страница' },
+  { id: 'link-app', name: 'Приложение', path: '/app', type: 'Страница' },
 ];
 
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [products, setProducts] = useState([]);
+  const [loadError, setLoadError] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-      }
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  const openPalette = () => {
+    setQuery('');
+    setActiveIndex(0);
+    setLoadError(false);
+    setIsOpen(true);
+  };
 
-  const filtered = commands.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
-
-  const handleSelect = (path) => {
-    navigate(path);
+  const close = () => {
     setIsOpen(false);
     setQuery('');
+    setActiveIndex(0);
+    setLoadError(false);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        if (isOpen) close();
+        else openPalette();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) inputRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let cancelled = false;
+    axios.get('/api/products')
+      .then((response) => {
+        if (!cancelled) setProducts(Array.isArray(response.data) ? response.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProducts([]);
+          setLoadError(true);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
+  const items = useMemo(() => {
+    const search = query.trim();
+    if (!search) return QUICK_LINKS;
+
+    const foundProducts = products
+      .filter((product) => (product.name || '').toLowerCase().includes(search.toLowerCase()))
+      .slice(0, 6)
+      .map((product) => ({
+        id: `product-${product.id}`,
+        name: product.name,
+        path: `/product/${product.id}`,
+        type: 'Товар',
+        price: product.price,
+      }));
+
+    const foundLinks = QUICK_LINKS.filter((link) => link.name.toLowerCase().includes(search.toLowerCase()));
+    const allResults = {
+      id: 'search-all',
+      name: `Все результаты по запросу «${search}»`,
+      path: `/catalog?search=${encodeURIComponent(search)}`,
+      type: 'Поиск',
+    };
+
+    return [...foundProducts, ...foundLinks, allResults];
+  }, [query, products]);
+
+  const safeIndex = items.length ? Math.min(activeIndex, items.length - 1) : 0;
+
+  useEffect(() => {
+    listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [safeIndex, items]);
+
+  const select = (item) => {
+    if (!item) return;
+    navigate(item.path);
+    close();
+  };
+
+  const onInputKeyDown = (event) => {
+    const count = items.length;
+    if (event.key === 'ArrowDown' && count) {
+      event.preventDefault();
+      setActiveIndex((index) => (Math.min(index, count - 1) + 1) % count);
+    } else if (event.key === 'ArrowUp' && count) {
+      event.preventDefault();
+      setActiveIndex((index) => (Math.min(index, count - 1) - 1 + count) % count);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      select(items[safeIndex]);
+    }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh', zIndex: 99999, backdropFilter: 'blur(5px)' }} onClick={() => setIsOpen(false)}>
-          <motion.div initial={{ scale: 0.95, y: -20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: -20 }} onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '600px', background: '#111', border: '1px solid #333', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
-            
-            <div style={{ display: 'flex', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #333' }}>
-              <Search size={20} color="#888" />
-              <input autoFocus type="text" placeholder="Поиск по сайту (Ctrl+K)..." value={query} onChange={(e) => setQuery(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', marginLeft: '15px', outline: 'none' }} />
-              <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20}/></button>
-            </div>
+    <Modal open={isOpen} onClose={close} title="Быстрый поиск">
+      <div className="flex gap-2" style={{ paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+        <input
+          ref={inputRef}
+          className="input"
+          type="text"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setActiveIndex(0);
+          }}
+          onKeyDown={onInputKeyDown}
+          placeholder="Найти товар или раздел…"
+          aria-label="Поиск по сайту"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="command-results"
+          aria-activedescendant={items[safeIndex] ? `cmd-${items[safeIndex].id}` : undefined}
+        />
+        <kbd className="badge" style={{ flexShrink: 0 }}>Esc</kbd>
+      </div>
 
-            <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '10px' }}>
-              {filtered.length === 0 ? (
-                <p style={{ color: '#666', padding: '20px', textAlign: 'center' }}>Ничего не найдено</p>
-              ) : (
-                filtered.map(c => (
-                  <div key={c.id} onClick={() => handleSelect(c.path)} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 15px', borderRadius: '8px', cursor: 'pointer' }} className="command-item">
-                    <span style={{ color: '#fff' }}>{c.name}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent)', fontSize: '0.8rem' }}><CornerDownLeft size={14}/> Перейти</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
+      <p className="tiny dim" style={{ margin: '14px 0 8px' }}>
+        {query.trim() ? 'Результаты' : 'Быстрые ссылки'}
+      </p>
+
+      <div
+        id="command-results"
+        ref={listRef}
+        role="listbox"
+        aria-label="Результаты поиска"
+        style={{ maxHeight: '44vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}
+      >
+        {items.length === 0 ? (
+          <p className="small muted" style={{ padding: '12px 4px' }}>Ничего не найдено</p>
+        ) : (
+          items.map((item, index) => {
+            const active = index === safeIndex;
+            return (
+              <button
+                key={item.id}
+                id={`cmd-${item.id}`}
+                type="button"
+                role="option"
+                aria-selected={active}
+                data-active={active}
+                className="command-item"
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => select(item)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '11px 12px',
+                  borderRadius: 10,
+                  border: '1px solid',
+                  borderColor: active ? 'var(--border-accent)' : 'transparent',
+                  background: active ? 'rgba(var(--accent-rgb), .08)' : 'transparent',
+                  color: 'var(--text)',
+                  textAlign: 'left',
+                }}
+              >
+                <span className="flex gap-2" style={{ minWidth: 0 }}>
+                  {item.type === 'Товар'
+                    ? <Package size={16} className="text-accent" style={{ flexShrink: 0 }} aria-hidden="true" />
+                    : <Compass size={16} className="text-accent" style={{ flexShrink: 0 }} aria-hidden="true" />}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                </span>
+                <span className="flex gap-2" style={{ flexShrink: 0 }}>
+                  {item.price != null && <span className="small text-accent">{item.price} ₽</span>}
+                  <span className="tiny dim">{item.type}</span>
+                  {active && <CornerDownLeft size={14} className="text-accent" aria-hidden="true" />}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {loadError && (
+        <p className="tiny dim" style={{ marginTop: 10 }}>Не удалось загрузить товары — показаны быстрые ссылки.</p>
       )}
-    </AnimatePresence>
+      <p className="tiny dim" style={{ marginTop: 12 }}>↑↓ — выбор · Enter — перейти · Esc — закрыть</p>
+    </Modal>
   );
 }

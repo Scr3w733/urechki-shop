@@ -1,29 +1,47 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Beer } from 'lucide-react';
 
 export default function Preloader() {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <motion.div 
-      initial={{ opacity: 1 }} 
-      exit={{ opacity: 0, transition: { duration: 0.5 } }}
-      style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#030303', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+    <motion.div
+      role="status"
+      aria-live="polite"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.25 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9000,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 14,
+        background: 'var(--bg)',
+      }}
     >
-      <motion.div 
-        animate={{ rotate: 360 }} 
-        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+      <motion.div
+        animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
+        transition={reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 18,
+          display: 'grid',
+          placeItems: 'center',
+          background: 'rgba(var(--accent-rgb), .12)',
+          border: '1px solid var(--border-accent)',
+        }}
       >
-        <Beer size={80} color="#d4af37" />
+        <Beer size={30} className="text-accent" aria-hidden="true" />
       </motion.div>
-      <motion.h2 
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-        style={{ color: '#d4af37', marginTop: '20px', letterSpacing: '5px', fontSize: '1.5rem', fontWeight: 'bold' }}
-      >
-        У РЕЧУШКИ
-      </motion.h2>
-      <motion.div 
-        initial={{ width: 0 }} animate={{ width: '200px' }} transition={{ duration: 1.5 }}
-        style={{ height: '3px', background: '#d4af37', marginTop: '20px', borderRadius: '10px' }}
-      />
+      <span className="bold text-accent" style={{ letterSpacing: '0.12em', fontSize: '0.95rem' }}>У РЕЧУШКИ</span>
+      <span className="small dim">Загружаем сайт…</span>
+      <span className="spinner" aria-hidden="true" style={{ opacity: reduceMotion ? 0 : 1 }} />
     </motion.div>
   );
 }

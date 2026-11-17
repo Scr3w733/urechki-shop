@@ -1,1075 +1,425 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Beer,
-  Star,
-  TrendingUp,
-  ArrowRight,
-  Timer,
-  Zap,
-  Mail,
-  ShieldCheck,
-  Truck,
-  Gift,
-  Heart,
-  Users,
-  Award,
-  MapPin,
-  Phone,
-  Clock,
-  Sparkles,
-  ChevronRight,
-  ThumbsUp,
-  Package,
-  CreditCard,
-  RefreshCw,
-  Percent,
-  MessageSquare,
-  Send,
-  CheckCircle,
-  PlayCircle,
-  Globe,
-  Coffee,
-  Music,
-  Camera,
-  Sun,
-  Moon,
-  Cloud,
-  Umbrella
-} from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import {
+  ArrowRight,
+  Award,
+  Beer,
+  CalendarDays,
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  Gift,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Send,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Star,
+  Truck,
+} from 'lucide-react';
+import ProductCard from '../components/ProductCard';
+import QuickView from '../components/QuickView';
+import { ProductGridSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
+import { useNotification } from '../context/NotificationContext';
+import { categoryEmoji, categoryGradient } from '../utils/product';
 
-// ============================================================
-// БЛОК 1: ДАННЫЕ ДЛЯ БАННЕРОВ
-// ============================================================
-const banners = [
-  {
-    id: 1,
-    title: "Скидка 20% на крафт",
-    subtitle: "Только сегодня! Успей затариться вкусным пивом по акции.",
-    color: "linear-gradient(135deg, #8b0000, #d4af37)",
-    link: "/catalog",
-    btnText: "Перейти в каталог"
-  },
-  {
-    id: 2,
-    title: "Новинки сезона",
-    subtitle: "Попробуй наш свежий IPA с нотками цитруса.",
-    color: "linear-gradient(135deg, #004d00, #00ff41)",
-    link: "/catalog",
-    btnText: "Смотреть новинки"
-  },
-  {
-    id: 3,
-    title: "Мерч для своих",
-    subtitle: "Создай футболку мечты в нашем конструкторе.",
-    color: "linear-gradient(135deg, #1a237e, #00d2ff)",
-    link: "/merch",
-    btnText: "Открыть конструктор"
-  }
-];
-
-// ============================================================
-// БЛОК 2: ДАННЫЕ ДЛЯ НАСТРОЕНИЙ
-// ============================================================
-const moods = [
-  { id: 'relax', label: 'Расслабиться', emoji: '🌙', filter: 'Пиво' },
-  { id: 'party', label: 'Вечеринка', emoji: '🎉', filter: 'Наборы' },
-  { id: 'food', label: 'К пицце', emoji: '🍕', filter: 'Закуски' },
-  { id: 'gift', label: 'В подарок', emoji: '🎁', filter: 'Наборы' },
-  { id: 'sport', label: 'Спорт', emoji: '⚽', filter: 'Мерч' }
-];
-
-// ============================================================
-// БЛОК 3: ДАННЫЕ ДЛЯ ПРЕИМУЩЕСТВ
-// ============================================================
-const advantages = [
-  { 
-    icon: <Truck size={40} color="var(--accent)" />, 
-    title: 'Быстрая доставка', 
-    desc: 'За 1-2 часа по городу' 
-  },
-  { 
-    icon: <ShieldCheck size={40} color="var(--accent)" />, 
-    title: 'Гарантия качества', 
-    desc: '100% свежесть' 
-  },
-  { 
-    icon: <Gift size={40} color="var(--accent)" />, 
-    title: 'Бонусы', 
-    desc: '10% с каждой покупки' 
-  },
-  { 
-    icon: <CreditCard size={40} color="var(--accent)" />, 
-    title: 'Удобная оплата', 
-    desc: 'Карта, СБП, наличные' 
-  },
-  { 
-    icon: <RefreshCw size={40} color="var(--accent)" />, 
-    title: 'Легкий возврат', 
-    desc: 'Без лишних вопросов' 
-  },
-  { 
-    icon: <Percent size={40} color="var(--accent)" />, 
-    title: 'Скидки', 
-    desc: 'Постоянным клиентам' 
-  }
-];
-
-// ============================================================
-// БЛОК 4: ДАННЫЕ ДЛЯ КАТЕГОРИЙ
-// ============================================================
 const categories = [
-  { name: 'Пиво', emoji: '🍻', path: '/catalog?search=Пиво', color: '#d4af37' },
-  { name: 'Закуски', emoji: '🍟', path: '/catalog?search=Закуски', color: '#ff6b35' },
-  { name: 'Мерч', emoji: '👕', path: '/merch', color: '#00d2ff' },
-  { name: 'Наборы', emoji: '🎁', path: '/catalog?search=Наборы', color: '#ff007f' },
-  { name: 'Сертификаты', emoji: '📜', path: '/catalog?search=Сертификаты', color: '#44ff44' }
+  { name: 'Пиво', desc: 'Классика и смелой крафт', to: '/catalog?search=Пиво' },
+  { name: 'Закуски', desc: 'Проверенное к пиву', to: '/catalog?search=Закуски' },
+  { name: 'Наборы', desc: 'Готовый подарок', to: '/catalog?search=Наборы' },
+  { name: 'Мерч', desc: 'Своя футболка', to: '/merch' },
+  { name: 'Сертификаты', desc: 'Подарок на любой вкус', to: '/catalog?search=Сертификаты' },
 ];
 
-// ============================================================
-// БЛОК 5: ДАННЫЕ ДЛЯ СТАТИСТИКИ
-// ============================================================
+const advantages = [
+  { icon: Truck, title: 'Доставка 1–2 часа', desc: 'Привезём свежим и охлаждённым по Новосибирску' },
+  { icon: ShieldCheck, title: 'Своя пивоварня', desc: 'Варим сами, без посредников, с 2015 года' },
+  { icon: Gift, title: 'Бонусы за покупки', desc: 'Копите бонусы и оплачивайте ими до 50% заказа' },
+  { icon: Award, title: 'Проверенное качество', desc: 'Каждая партия проходит контроль на производстве' },
+];
+
 const stats = [
-  { icon: <Package size={30} color="var(--accent)" />, value: '5420+', label: 'Заказов' },
-  { icon: <Users size={30} color="var(--accent)" />, value: '1250+', label: 'Клиентов' },
-  { icon: <Beer size={30} color="var(--accent)" />, value: '40', label: 'Сортов пива' },
-  { icon: <Star size={30} color="var(--accent)" />, value: '4.9', label: 'Рейтинг' }
+  { value: '2015', label: 'год основания' },
+  { value: '4', label: 'фирменных бара' },
+  { value: '2018', label: 'своя пивоварня' },
+  { value: '1–2 ч', label: 'доставка по городу' },
 ];
 
-// ============================================================
-// БЛОК 6: ДАННЫЕ ДЛЯ ОТЗЫВОВ
-// ============================================================
-const reviews = [
-  { 
-    name: 'Алексей', 
-    text: 'Лучшее пиво в городе! Доставили за час, всё свежее и холодное.', 
-    rating: 5, 
-    avatar: '👨',
-    date: '12 Ноября 2026'
-  },
-  { 
-    name: 'Мария', 
-    text: 'Мерч просто огонь. Футболка сидит идеально, качество ткани супер.', 
-    rating: 5, 
-    avatar: '👩',
-    date: '10 Ноября 2026'
-  },
-  { 
-    name: 'Дмитрий', 
-    text: 'Постоянно заказываю, скидки радуют. Крафт реально достойный.', 
-    rating: 5, 
-    avatar: '🧑',
-    date: '08 Ноября 2026'
-  },
-  { 
-    name: 'Ольга', 
-    text: 'Отличный сервис. Курьер вежливый, пиво холодное, закуски свежие.', 
-    rating: 5, 
-    avatar: '👩‍🦰',
-    date: '05 Ноября 2026'
-  },
-  { 
-    name: 'Сергей', 
-    text: 'Крафт реально достойный. IPA зашел на ура, беру еще.', 
-    rating: 5, 
-    avatar: '👨‍🦱',
-    date: '03 Ноября 2026'
-  },
-  { 
-    name: 'Анна', 
-    text: 'Заказывала набор в подарок мужу. Остались довольны, красивая упаковка!', 
-    rating: 5, 
-    avatar: '👱‍♀️',
-    date: '01 Ноября 2026'
-  }
+const reviewHighlights = [
+  { name: 'Алексей', initials: 'А', text: 'Пиво свежее, доставили быстро. Стало моим любимым магазином.', date: 'ноябрь 2026' },
+  { name: 'Мария', initials: 'М', text: 'Заказывала набор в подарок — красивая упаковка и отличный состав.', date: 'ноябрь 2026' },
+  { name: 'Дмитрий', initials: 'Д', text: 'Нравится, что можно собрать свою футболку. Качество ткани порадовало.', date: 'октябрь 2026' },
 ];
 
-// ============================================================
-// БЛОК 7: ДАННЫЕ ДЛЯ ПАРТНЕРОВ
-// ============================================================
-const partners = [
-  { name: 'Sber' },
-  { name: 'Tinkoff' },
-  { name: 'Yandex' },
-  { name: 'VK' },
-  { name: 'Ozon' },
-  { name: 'Wildberries' }
+const faqTeaser = [
+  { q: 'Как быстро привезут заказ?', a: 'По Новосибирску — в течение 1–2 часов. Доставка бесплатна от 2000 ₽.' },
+  { q: 'Можно ли оплатить бонусами?', a: 'Да, бонусами можно покрыть до 50% суммы заказа.' },
+  { q: 'Где попробовать пиво в розлив?', a: 'В четырёх фирменных барах Новосибирска и на экскурсиях завода.' },
+  { q: 'Есть ли безалкогольное пиво?', a: 'Да, в ассортименте есть безалкогольная версия классического лагера.' },
 ];
 
-// ============================================================
-// БЛОК 8: ДАННЫЕ ДЛЯ FAQ
-// ============================================================
-const faqs = [
-  { q: 'Как быстро доставка?', a: '1-2 часа по Новосибирску.' },
-  { q: 'Есть ли бонусы?', a: 'Да, 10% от каждой покупки.' },
-  { q: 'Можно оплатить картой?', a: 'Конечно, через СБП или картой.' },
-  { q: 'Какой минимальный заказ?', a: 'От 500 рублей.' },
-  { q: 'Работаете ли вы ночью?', a: 'Мы работаем до 23:00.' },
-  { q: 'Можно вернуть товар?', a: 'Да, в течение 14 дней.' }
-];
-
-// ============================================================
-// БЛОК 9: ДАННЫЕ ДЛЯ ГАЛЕРЕИ
-// ============================================================
-const gallery = [
-  { id: 1, emoji: '🍻', title: 'Пивной вечер' },
-  { id: 2, emoji: '🍟', title: 'Закуски' },
-  { id: 3, emoji: '👕', title: 'Мерч' },
-  { id: 4, emoji: '🎁', title: 'Наборы' },
-  { id: 5, emoji: '🍕', title: 'Пицца' },
-  { id: 6, emoji: '🍺', title: 'Крафт' },
-  { id: 7, emoji: '🥨', title: 'К пиву' },
-  { id: 8, emoji: '🧀', title: 'Сыры' }
-];
-
-// ============================================================
-// БЛОК 10: ДАННЫЕ ДЛЯ БЛОГА
-// ============================================================
 const blogPreviews = [
-  { id: 1, title: 'История сибирского пивоварения', img: '🏭', date: '12 Ноября' },
-  { id: 2, title: 'Как правильно дегустировать пиво', img: '🍺', date: '10 Ноября' },
-  { id: 3, title: 'С чем сочетать разные сорта', img: '🍽️', date: '05 Ноября' }
+  { id: 1, title: 'История сибирского пивоварения', desc: 'Как Новосибирск стал столицей крафта за Уралом.', emoji: '🏭', date: '12 ноября' },
+  { id: 2, title: 'Как правильно дегустировать пиво', desc: 'Температура, бокалы, аромат и вкус — короткий гид.', emoji: '🍺', date: '10 ноября' },
+  { id: 3, title: 'С чем сочетать разные сорта', desc: 'От вяленого леща к лагеру до шоколада к стауту.', emoji: '🍽️', date: '5 ноября' },
 ];
 
-// ============================================================
-// БЛОК 11: ДАННЫЕ ДЛЯ ЛОКАЦИЙ
-// ============================================================
-const locations = [
-  { title: 'Главный филиал', addr: 'ул. 2-я Воинская, 53' },
-  { title: 'На Ленина', addr: 'ул. Ленина, 10' },
-  { title: 'На Красном', addr: 'Красный проспект, 50' },
-  { title: 'На Кирова', addr: 'ул. Кирова, 27' }
-];
-
-// ============================================================
-// ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СТИКЕРОВ
-// ============================================================
-const getSticker = (cat) => {
-  if (cat === 'Пиво') return '🍻';
-  if (cat === 'Закуски') return '🍟';
-  if (cat === 'Мерч') return '👕';
-  if (cat === 'Наборы') return '🎁';
-  return '📜';
-};
-
-// ============================================================
-// ОСНОВНОЙ КОМПОНЕНТ
-// ============================================================
 export default function Home() {
   const [products, setProducts] = useState([]);
-  const [currentBanner, setCurrentBanner] = useState(0);
-  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
-  const [selectedMood, setSelectedMood] = useState(moods[0]);
+  const [loading, setLoading] = useState(true);
+  const [quickView, setQuickView] = useState(null);
   const [activeFaq, setActiveFaq] = useState(null);
-  const { addToCart } = useCart();
+  const [email, setEmail] = useState('');
+  const { addNotification } = useNotification();
 
   useEffect(() => {
+    let cancelled = false;
     axios.get('/api/products')
-      .then(res => setProducts(res.data))
-      .catch(() => setProducts([]));
-
-    const bannerTimer = setInterval(() => {
-      setCurrentBanner(prev => (prev + 1) % banners.length);
-    }, 5000);
-
-    const clockTimer = setInterval(() => {
-      const now = new Date();
-      const end = new Date();
-      end.setHours(23, 59, 59, 999);
-      const diff = end - now;
-      setTimeLeft({
-        h: Math.floor((diff / (1000 * 60 * 60)) % 24),
-        m: Math.floor((diff / 1000 / 60) % 60),
-        s: Math.floor((diff / 1000) % 60)
+      .then(res => {
+        if (!cancelled) setProducts(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-    }, 1000);
-
-    return () => {
-      clearInterval(bannerTimer);
-      clearInterval(clockTimer);
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  const filteredByMood = products.filter(p => p.category === selectedMood.filter).slice(0, 4);
-  const bestsellers = products.slice(0, 4);
-  const newArrivals = products.slice(4, 8);
+  const featured = products.slice(0, 4);
+
+  const subscribe = (e) => {
+    e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      addNotification('Введите корректный email', 'error');
+      return;
+    }
+    localStorage.setItem('urechki_newsletter', email);
+    addNotification('Готово! Расскажем о новых сортах первыми', 'success');
+    setEmail('');
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{ paddingBottom: '60px', overflowX: 'hidden' }}
-    >
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 1: ГЛАВНЫЙ БАННЕР (КАРУСЕЛЬ) */}
-      {/* ========================================== */}
-      <section style={{ position: 'relative', height: '420px', margin: '20px 5%', borderRadius: '25px', overflow: 'hidden' }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentBanner}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7 }}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: banners[currentBanner].color,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              padding: '0 10%',
-            }}
-          >
-            <motion.h1
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              style={{
-                fontSize: 'clamp(2rem, 5vw, 4rem)',
-                color: '#fff',
-                fontWeight: 900,
-                marginBottom: '15px',
-                lineHeight: '1.1',
-                textShadow: '0 2px 10px rgba(0,0,0,0.3)'
-              }}
-            >
-              {banners[currentBanner].title}
-            </motion.h1>
-            <motion.p
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              style={{
-                fontSize: '1.3rem',
-                color: '#eee',
-                marginBottom: '30px'
-              }}
-            >
-              {banners[currentBanner].subtitle}
-            </motion.p>
-            <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Link to={banners[currentBanner].link}>
-                <button
-                  style={{
-                    background: '#fff',
-                    color: '#000',
-                    padding: '15px 35px',
-                    borderRadius: '50px',
-                    fontWeight: 'bold',
-                    fontSize: '1rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 5px 20px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  {banners[currentBanner].btnText}
-                </button>
-              </Link>
-            </motion.div>
-          </motion.div>
-        </AnimatePresence>
+    <div className="fade-in">
+      {/* ================= HERO ================= */}
+      <section className="hero container">
+        <div className="hero-content">
+          <span className="eyebrow">Сибирский крафт с 2015 года</span>
+          <h1>Пиво, сваренное <span className="text-accent">у речушки</span></h1>
+          <p className="muted">
+            Собственная пивоварня в Новосибирске, честные ингредиенты и закуски,
+            которые созданы друг для друга. Соберите свой набор или загляните в бар.
+          </p>
+          <div className="flex gap-2 wrap">
+            <Link to="/catalog" className="btn btn-primary btn-lg">
+              Смотреть каталог <ArrowRight size={18} />
+            </Link>
+            <Link to="/about" className="btn btn-outline btn-lg">Наша история</Link>
+          </div>
+          <div className="hero-stats">
+            <div><strong>2015</strong><span>год основания</span></div>
+            <div><strong>4</strong><span>фирменных бара</span></div>
+            <div><strong>1–2 ч</strong><span>доставка по городу</span></div>
+          </div>
+        </div>
 
-        {/* Точки навигации */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '25px',
-            left: '10%',
-            display: 'flex',
-            gap: '10px',
-            zIndex: 10
-          }}
-        >
-          {banners.map((_, i) => (
-            <div
-              key={i}
-              onClick={() => setCurrentBanner(i)}
-              style={{
-                width: currentBanner === i ? '30px' : '10px',
-                height: '10px',
-                borderRadius: '5px',
-                background: currentBanner === i ? '#fff' : 'rgba(255,255,255,0.5)',
-                cursor: 'pointer',
-                transition: '0.3s'
-              }}
-            />
-          ))}
+        <div className="hero-visual">
+          <span className="hero-emoji" role="img" aria-label="Кружка пива">🍺</span>
+          <div className="flex gap-2 wrap center" style={{ maxWidth: 420, marginTop: 24 }}>
+            <span className="badge badge-accent"><Beer size={14} /> своё производство</span>
+            <span className="badge badge-accent"><Award size={14} /> крафт Сибири</span>
+            <span className="badge badge-accent"><Truck size={14} /> доставка 1–2 ч</span>
+          </div>
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 2: БЕГУЩАЯ СТРОКА */}
-      {/* ========================================== */}
-      <div className="marquee-container" style={{ marginTop: '30px' }}>
+      <div className="marquee-container" aria-hidden="true">
         <div className="marquee-content">
-          <span>СВАРЕНО В НОВОСИБИРСКЕ • ТОЛЬКО НАТУРАЛЬНЫЕ ИНГРЕДИЕНТЫ • У РЕЧУШКИ • ДОСТАВКА ПО ГОРОДУ • СКИДКИ ПОСТОЯННЫМ КЛИЕНТАМ • </span>
-          <span>СВАРЕНО В НОВОСИБИРСКЕ • ТОЛЬКО НАТУРАЛЬНЫЕ ИНГРЕДИЕНТЫ • У РЕЧУШКИ • ДОСТАВКА ПО ГОРОДУ • СКИДКИ ПОСТОЯННЫМ КЛИЕНТАМ • </span>
+          <span>СВАРЕНО В НОВОСИБИРСКЕ • НАТУРАЛЬНЫЕ ИНГРЕДИЕНТЫ • У РЕЧУШКИ • ДОСТАВКА ПО ГОРОДУ • СВОЯ ПИВОВАРНЯ • </span>
+          <span>СВАРЕНО В НОВОСИБИРСКЕ • НАТУРАЛЬНЫЕ ИНГРЕДИЕНТЫ • У РЕЧУШКИ • ДОСТАВКА ПО ГОРОДУ • СВОЯ ПИВОВАРНЯ • </span>
         </div>
       </div>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 3: ПРЕИМУЩЕСТВА */}
-      {/* ========================================== */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', padding: '40px 5%' }}>
-        {advantages.map((item, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.1 }}
-            className="glass-panel"
-            style={{
-              padding: '25px 15px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center',
-              gap: '10px'
-            }}
-          >
-            {item.icon}
-            <h4 style={{ color: '#fff', fontSize: '1rem' }}>{item.title}</h4>
-            <p style={{ color: '#888', fontSize: '0.85rem' }}>{item.desc}</p>
-          </motion.div>
-        ))}
+      {/* ================= FEATURED PRODUCTS ================= */}
+      <section className="section container">
+        <div className="section-head flex between wrap gap-2">
+          <div>
+            <span className="eyebrow"><Sparkles size={14} /> Витрина</span>
+            <h2>Популярное сейчас</h2>
+            <p>Товары из нашего каталога — от классического лагера до крафтовых новинок.</p>
+          </div>
+          <Link to="/catalog" className="btn btn-outline">Весь каталог <ArrowRight size={17} /></Link>
+        </div>
+
+        {loading ? (
+          <ProductGridSkeleton count={4} />
+        ) : featured.length ? (
+          <div className="grid grid-4">
+            {featured.map(product => (
+              <ProductCard key={product.id} product={product} onQuickView={setQuickView} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Каталог пока пуст"
+            description="Мы обновляем витрину. Загляните чуть позже или напишите нам."
+            action={<Link to="/contacts" className="btn btn-outline">Связаться с нами</Link>}
+          />
+        )}
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 4: КАТЕГОРИИ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Sparkles color="var(--accent)" /> Выбери категорию
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
-          {categories.map((cat, i) => (
-            <Link key={i} to={cat.path} style={{ textDecoration: 'none' }}>
-              <motion.div
-                whileHover={{ y: -5, scale: 1.02 }}
-                className="glass-panel"
-                style={{
-                  padding: '25px 15px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  borderColor: cat.color
-                }}
-              >
-                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{cat.emoji}</div>
-                <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>{cat.name}</h4>
-              </motion.div>
+      {/* ================= CATEGORIES ================= */}
+      <section className="section-sm container">
+        <div className="section-head">
+          <span className="eyebrow">Ассортимент</span>
+          <h2>Выберите категорию</h2>
+        </div>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+          {categories.map(cat => (
+            <Link key={cat.name} to={cat.to} className="card card-hover text-center">
+              <div className="product-media" style={{ background: categoryGradient(cat.name), minHeight: 116, borderRadius: 'var(--radius-sm)', fontSize: '3rem' }}>
+                <span role="img" aria-label={cat.name}>{categoryEmoji(cat.name)}</span>
+              </div>
+              <h3 className="small bold" style={{ marginTop: 16 }}>{cat.name}</h3>
+              <p className="tiny muted">{cat.desc}</p>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 5: СДЕЛКА ДНЯ (ТАЙМЕР) */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <div
-          className="glass-panel"
-          style={{
-            padding: '30px',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '20px',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            border: '2px solid var(--accent)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Zap size={40} color="var(--accent)" />
-            <div>
-              <h3 style={{ color: '#fff', fontSize: '1.5rem' }}>Сделка дня</h3>
-              <p style={{ color: '#aaa' }}>Скидка 20% на всю категорию</p>
+      {/* ================= VALUE PROPOSITIONS ================= */}
+      <section className="section-sm container">
+        <div className="grid grid-4">
+          {advantages.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="card card-hover text-center stack" style={{ alignItems: 'center' }}>
+              <span className="icon-btn text-accent"><Icon size={22} /></span>
+              <h3 className="small bold">{title}</h3>
+              <p className="small muted">{desc}</p>
             </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Timer size={20} color="var(--accent)" />
-            <div style={{ display: 'flex', gap: '8px', fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>
-              <span style={{ background: '#000', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
-                {String(timeLeft.h).padStart(2, '0')}
-              </span>
-              <span style={{ color: 'var(--accent)' }}>:</span>
-              <span style={{ background: '#000', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
-                {String(timeLeft.m).padStart(2, '0')}
-              </span>
-              <span style={{ color: 'var(--accent)' }}>:</span>
-              <span style={{ background: '#000', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
-                {String(timeLeft.s).padStart(2, '0')}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 6: ВЫБОР НАСТРОЕНИЯ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Heart color="var(--accent)" /> Подбери под настроение
-        </h2>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '30px' }}>
-          {moods.map(m => (
-            <button
-              key={m.id}
-              onClick={() => setSelectedMood(m)}
-              style={{
-                background: selectedMood.id === m.id ? 'var(--accent)' : '#111',
-                color: selectedMood.id === m.id ? '#000' : '#fff',
-                border: '1px solid var(--accent)',
-                padding: '12px 20px',
-                borderRadius: '30px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: '0.3s'
-              }}
-            >
-              <span>{m.emoji}</span> {m.label}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-          {filteredByMood.length === 0 ? (
-            <p style={{ color: '#888', gridColumn: '1 / -1' }}>Товары загружаются...</p>
-          ) : (
-            filteredByMood.map(product => (
-              <motion.div
-                key={product.id}
-                whileHover={{ y: -5 }}
-                className="glass-panel"
-                style={{ padding: '15px' }}
-              >
-                <div
-                  style={{
-                    height: '150px',
-                    background: '#111',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '5rem',
-                    marginBottom: '15px'
-                  }}
-                >
-                  {getSticker(product.category)}
-                </div>
-                <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '5px' }}>{product.name}</h3>
-                <p style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '10px' }}>
-                  {product.price} ₽
-                </p>
-                <button
-                  onClick={() => addToCart(product)}
-                  style={{
-                    width: '100%',
-                    background: 'var(--accent)',
-                    color: '#000',
-                    border: 'none',
-                    padding: '10px',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  В корзину
-                </button>
-              </motion.div>
-            ))
-          )}
-        </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 7: ХИТЫ ПРОДАЖ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-          <h2 style={{ fontSize: '2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <TrendingUp color="var(--accent)" /> Хиты продаж
-          </h2>
-          <Link to="/catalog" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
-            Все товары <ArrowRight size={18} />
-          </Link>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-          {bestsellers.map(product => (
-            <motion.div
-              key={product.id}
-              whileHover={{ y: -5 }}
-              className="glass-panel"
-              style={{ padding: '15px', position: 'relative' }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '15px',
-                  left: '15px',
-                  background: 'var(--accent)',
-                  color: '#000',
-                  fontSize: '0.7rem',
-                  padding: '3px 10px',
-                  borderRadius: '15px',
-                  fontWeight: 'bold'
-                }}
-              >
-                TOP
-              </div>
-              <div
-                style={{
-                  height: '150px',
-                  background: '#111',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '5rem',
-                  marginBottom: '15px'
-                }}
-              >
-                {getSticker(product.category)}
-              </div>
-              <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '5px' }}>{product.name}</h3>
-              <p style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '10px' }}>
-                {product.price} ₽
-              </p>
-              <button
-                onClick={() => addToCart(product)}
-                style={{
-                  width: '100%',
-                  background: 'var(--accent)',
-                  color: '#000',
-                  border: 'none',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                В корзину
-              </button>
-            </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 8: НОВИНКИ */}
-      {/* ========================================== */}
-      {newArrivals.length > 0 && (
-        <section style={{ padding: '40px 5%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-            <h2 style={{ fontSize: '2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Sparkles color="var(--accent)" /> Новинки
-            </h2>
+      {/* ================= PRODUCTION STORY ================= */}
+      <section className="section container">
+        <div className="grid grid-2" style={{ alignItems: 'center' }}>
+          <div className="stack">
+            <span className="eyebrow">Как мы варим</span>
+            <h2>От сибирского ячменя до вашей кружки</h2>
+            <p>
+              Всё началось в 2015 году с арендованного подвала на 2-й Воинской. Сегодня у нас
+              собственное производство на Станционной, 60, где каждую партию контролируют технологи.
+            </p>
+            <p className="small muted">
+              Никаких порошковых концентратов: вода, солод, хмель и дрожжи. Остатки производства
+              мы отдаём местным фермерам, а CO₂ используем повторно.
+            </p>
+            <Link to="/production" className="btn btn-outline">Подробнее о производстве <ArrowRight size={17} /></Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-            {newArrivals.map(product => (
-              <motion.div
-                key={product.id}
-                whileHover={{ y: -5 }}
-                className="glass-panel"
-                style={{ padding: '15px', position: 'relative' }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '15px',
-                    left: '15px',
-                    background: '#00ff41',
-                    color: '#000',
-                    fontSize: '0.7rem',
-                    padding: '3px 10px',
-                    borderRadius: '15px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  NEW
+          <div className="glass-panel stack" style={{ padding: 28 }}>
+            {[
+              { icon: CheckCircle, title: 'Сырьё', text: 'Сибирский ячмень и хмель из Чувашии и Германии' },
+              { icon: ShieldCheck, title: 'Контроль', text: 'Лабораторные проверки каждой партии' },
+              { icon: Truck, title: 'Розлив', text: 'Стекло и ПЭТ, наполнение под давлением' },
+            ].map(({ icon: Icon, title, text }, i) => (
+              <div key={title} className="flex gap-2" style={{ alignItems: 'flex-start' }}>
+                <span className="badge badge-accent">{String(i + 1).padStart(2, '0')}</span>
+                <div>
+                  <div className="flex gap-2"><Icon size={17} className="text-accent" /><strong className="small">{title}</strong></div>
+                  <p className="small muted">{text}</p>
                 </div>
-                <div
-                  style={{
-                    height: '150px',
-                    background: '#111',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '5rem',
-                    marginBottom: '15px'
-                  }}
-                >
-                  {getSticker(product.category)}
-                </div>
-                <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '5px' }}>{product.name}</h3>
-                <p style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '10px' }}>
-                  {product.price} ₽
-                </p>
-                <button
-                  onClick={() => addToCart(product)}
-                  style={{
-                    width: '100%',
-                    background: 'var(--accent)',
-                    color: '#000',
-                    border: 'none',
-                    padding: '10px',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  В корзину
-                </button>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 9: СТАТИСТИКА */}
-      {/* ========================================== */}
-      <section style={{ padding: '60px 5%', background: 'linear-gradient(135deg, rgba(212,175,55,0.1), transparent)' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', textAlign: 'center', marginBottom: '40px' }}>Мы в цифрах</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', textAlign: 'center' }}>
-          {stats.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>{item.icon}</div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)' }}>{item.value}</div>
-              <div style={{ color: '#aaa', fontSize: '0.9rem' }}>{item.label}</div>
-            </motion.div>
+      {/* ================= STATS ================= */}
+      <section className="section-sm container">
+        <div className="section-head center">
+          <span className="eyebrow">О нас цифрами</span>
+          <h2>Небольшая пивоварня с характером</h2>
+        </div>
+        <div className="grid grid-4">
+          {stats.map(stat => (
+            <div key={stat.label} className="card card-hover text-center">
+              <strong className="text-accent" style={{ fontSize: '2rem', display: 'block', lineHeight: 1.2 }}>{stat.value}</strong>
+              <span className="small muted">{stat.label}</span>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 10: ПОЧЕМУ МЫ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', textAlign: 'center', marginBottom: '40px' }}>Почему выбирают нас</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-          {[
-            { icon: '🍺', title: 'Свое производство', desc: 'Варим сами, без посредников' },
-            { icon: '🏆', title: 'Награды', desc: 'Победители конкурсов крафта' },
-            { icon: '⚡', title: 'Скорость', desc: 'Доставка за 1-2 часа' },
-            { icon: '💎', title: 'Премиум-качество', desc: 'Только отборное сырье' }
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="glass-panel"
-              style={{ padding: '30px', textAlign: 'center' }}
-            >
-              <div style={{ fontSize: '3rem', marginBottom: '15px' }}>{item.icon}</div>
-              <h3 style={{ color: '#fff', marginBottom: '10px' }}>{item.title}</h3>
-              <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{item.desc}</p>
-            </motion.div>
-          ))}
+      {/* ================= REVIEWS HIGHLIGHTS ================= */}
+      <section className="section container">
+        <div className="section-head flex between wrap gap-2">
+          <div>
+            <span className="eyebrow">Голоса гостей</span>
+            <h2>Что говорят о нас</h2>
+            <p className="small">Примеры отзывов гостей — демонстрационные тексты для витрины.</p>
+          </div>
+          <Link to="/reviews" className="btn btn-outline">Все отзывы <ArrowRight size={17} /></Link>
         </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 11: ОТЗЫВЫ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', textAlign: 'center', marginBottom: '40px' }}>Отзывы</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-          {reviews.map((rev, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="glass-panel"
-              style={{ padding: '25px', borderLeft: '4px solid var(--accent)' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
-                <div style={{ fontSize: '2.5rem' }}>{rev.avatar}</div>
+        <div className="grid grid-3">
+          {reviewHighlights.map(rev => (
+            <figure key={rev.name} className="card card-hover" style={{ borderLeft: '3px solid var(--accent)', margin: 0 }}>
+              <div className="flex gap-2" style={{ marginBottom: 14 }}>
+                <span className="badge badge-accent" style={{ width: 42, height: 42, justifyContent: 'center', fontSize: '1rem' }}>{rev.initials}</span>
                 <div>
-                  <h4 style={{ color: '#fff' }}>{rev.name}</h4>
-                  <div style={{ display: 'flex', color: 'var(--accent)' }}>{'★'.repeat(rev.rating)}</div>
+                  <figcaption className="bold small">{rev.name}</figcaption>
+                  <span className="tiny dim">{rev.date}</span>
                 </div>
               </div>
-              <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: '10px' }}>"{rev.text}"</p>
-              <span style={{ color: '#666', fontSize: '0.8rem' }}>{rev.date}</span>
-            </motion.div>
+              <div className="flex gap-1" style={{ color: 'var(--accent)', marginBottom: 10 }}>
+                {Array.from({ length: 5 }, (_, i) => <Star key={i} size={14} fill="currentColor" />)}
+              </div>
+              <blockquote className="small muted" style={{ fontStyle: 'italic', flex: 1 }}>«{rev.text}»</blockquote>
+            </figure>
           ))}
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 12: ПАРТНЕРЫ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%', textAlign: 'center' }}>
-        <h3 style={{ color: '#666', fontSize: '1rem', marginBottom: '20px', letterSpacing: '3px' }}>НАМ ДОВЕРЯЮТ</h3>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', flexWrap: 'wrap', opacity: 0.5 }}>
-          {partners.map((partner, i) => (
-            <div key={i} style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{partner.name}</div>
-          ))}
+      {/* ================= FAQ TEASER ================= */}
+      <section className="section-sm container-narrow">
+        <div className="section-head center">
+          <span className="eyebrow">FAQ</span>
+          <h2>Частые вопросы</h2>
         </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 13: FAQ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', textAlign: 'center', marginBottom: '30px' }}>Частые вопросы</h2>
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {faqs.map((item, i) => (
-            <div key={i} className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+        <div className="stack" style={{ gap: 10 }}>
+          {faqTeaser.map((item, i) => (
+            <div key={item.q} className="glass-panel" style={{ overflow: 'hidden' }}>
               <button
+                className="flex between"
                 onClick={() => setActiveFaq(activeFaq === i ? null : i)}
-                style={{
-                  width: '100%',
-                  padding: '20px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
+                style={{ width: '100%', padding: '18px 20px', background: 'none', border: 'none', color: 'var(--text)', textAlign: 'left', gap: 16 }}
+                aria-expanded={activeFaq === i}
               >
-                {item.q}
-                <ChevronRight
-                  size={20}
-                  style={{
-                    transform: activeFaq === i ? 'rotate(90deg)' : 'rotate(0)',
-                    transition: '0.3s',
-                    color: 'var(--accent)'
-                  }}
-                />
+                <span className="bold small">{item.q}</span>
+                <ChevronRight size={18} className="text-accent" style={{ transform: activeFaq === i ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
               </button>
-              <AnimatePresence>
+              <AnimatePresence initial={false}>
                 {activeFaq === i && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ padding: '0 20px 20px', color: '#aaa' }}>{item.a}</div>
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
+                    <p className="small muted" style={{ padding: '0 20px 18px', margin: 0 }}>{item.a}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 14: ГАЛЕРЕЯ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', textAlign: 'center', marginBottom: '40px' }}>Галерея</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
-          {gallery.map((item) => (
-            <motion.div
-              key={item.id}
-              whileHover={{ scale: 1.05 }}
-              className="glass-panel"
-              style={{ padding: '20px', textAlign: 'center', cursor: 'pointer' }}
-            >
-              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{item.emoji}</div>
-              <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{item.title}</p>
-            </motion.div>
-          ))}
+        <div className="text-center" style={{ marginTop: 24 }}>
+          <Link to="/faq" className="btn btn-outline">Все вопросы и ответы <ArrowRight size={17} /></Link>
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 15: БЛОГ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-          <h2 style={{ fontSize: '2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <MessageSquare color="var(--accent)" /> Блог
-          </h2>
-          <Link to="/blog" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
-            Все статьи <ArrowRight size={18} />
-          </Link>
+      {/* ================= BLOG TEASER ================= */}
+      <section className="section container">
+        <div className="section-head flex between wrap gap-2">
+          <div>
+            <span className="eyebrow"><MessageSquare size={14} /> Блог</span>
+            <h2>Читайте о пивной культуре</h2>
+          </div>
+          <Link to="/blog" className="btn btn-outline">Все статьи <ArrowRight size={17} /></Link>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-          {blogPreviews.map((post) => (
-            <Link key={post.id} to={`/blog/${post.id}`} style={{ textDecoration: 'none' }}>
-              <motion.div whileHover={{ y: -5 }} className="glass-panel" style={{ padding: '20px' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '15px', textAlign: 'center' }}>{post.img}</div>
-                <h3 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '10px' }}>{post.title}</h3>
-                <p style={{ color: '#888', fontSize: '0.85rem' }}>{post.date}</p>
-              </motion.div>
+        <div className="grid grid-3">
+          {blogPreviews.map(post => (
+            <Link key={post.id} to={`/blog/${post.id}`} className="card card-hover stack">
+              <div className="product-media" style={{ background: categoryGradient('Пиво'), minHeight: 120, borderRadius: 'var(--radius-sm)', fontSize: '2.8rem' }}>
+                <span role="img" aria-label={post.title}>{post.emoji}</span>
+              </div>
+              <div>
+                <h3 className="small bold">{post.title}</h3>
+                <p className="small muted">{post.desc}</p>
+                <span className="tiny dim"><CalendarDays size={12} /> {post.date}</span>
+              </div>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 16: ПОДПИСКА */}
-      {/* ========================================== */}
-      <section style={{ padding: '60px 5%' }}>
-        <div
-          className="glass-panel"
-          style={{
-            padding: '50px 30px',
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.15), transparent)',
-            border: '1px solid var(--accent)'
-          }}
-        >
-          <Mail size={50} color="var(--accent)" style={{ margin: '0 auto 20px' }} />
-          <h2 style={{ color: '#fff', fontSize: '2rem', marginBottom: '10px' }}>Будь в курсе</h2>
-          <p style={{ color: '#aaa', marginBottom: '30px', fontSize: '1.1rem' }}>
-            Подпишись и получи промокод на 500 рублей
-          </p>
-          <div
-            style={{
-              display: 'flex',
-              maxWidth: '500px',
-              margin: '0 auto',
-              background: '#111',
-              borderRadius: '30px',
-              padding: '5px',
-              border: '1px solid #333'
-            }}
-          >
+      {/* ================= NEWSLETTER ================= */}
+      <section className="section-sm container">
+        <div className="glass-panel stack" style={{ padding: '40px 28px', alignItems: 'center', textAlign: 'center', background: 'linear-gradient(135deg, rgba(var(--accent-rgb),.12), transparent)', borderColor: 'var(--border-accent)' }}>
+          <span className="badge badge-accent"><Mail size={15} /> Рассылка</span>
+          <h2>Будьте в курсе новых сортов</h2>
+          <p className="muted" style={{ maxWidth: 520 }}>Рассказываем о новинках, дегустациях и акциях. Без лишнего шума — только пивное.</p>
+          <form onSubmit={subscribe} className="flex gap-2 wrap center" style={{ width: '100%', maxWidth: 520 }}>
             <input
+              className="input"
+              style={{ flex: '1 1 240px' }}
               type="email"
-              placeholder="Ваш Email"
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                padding: '15px',
-                color: '#fff',
-                outline: 'none'
-              }}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Ваш email"
+              aria-label="Email для подписки"
             />
-            <button
-              style={{
-                background: 'var(--accent)',
-                color: '#000',
-                border: 'none',
-                padding: '0 30px',
-                borderRadius: '25px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
+            <button type="submit" className="btn btn-primary"><Send size={17} /> Подписаться</button>
+          </form>
+        </div>
+      </section>
+
+      {/* ================= APP TEASER ================= */}
+      <section className="section-sm container">
+        <div className="glass-panel grid grid-2" style={{ padding: 32, alignItems: 'center', gap: 28 }}>
+          <div className="stack">
+            <span className="eyebrow"><Smartphone size={14} /> Скоро</span>
+            <h2>Магазин в вашем кармане</h2>
+            <p className="small muted">Заказ в пару касаний, история покупок и персональные предложения. Мы готовим приложение — следите за обновлениями.</p>
+            <Link to="/app" className="btn btn-outline">Узнать подробнее <ArrowRight size={17} /></Link>
+          </div>
+          <div className="flex center">
+            <div
+              aria-hidden="true"
+              style={{ width: 170, padding: 10, borderRadius: 28, border: '2px solid var(--border-accent)', background: '#0c0c0f', boxShadow: 'var(--shadow)' }}
             >
-              Подписаться
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 17: ФИЛИАЛЫ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <h2 style={{ fontSize: '2rem', color: '#fff', textAlign: 'center', marginBottom: '40px' }}>Наши филиалы</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-          {locations.map((loc, i) => (
-            <div key={i} className="glass-panel" style={{ padding: '25px', textAlign: 'center' }}>
-              <MapPin size={30} color="var(--accent)" style={{ margin: '0 auto 15px' }} />
-              <h4 style={{ color: '#fff', marginBottom: '10px' }}>{loc.title}</h4>
-              <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{loc.addr}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 18: ПРИЛОЖЕНИЕ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%' }}>
-        <Link to="/app" style={{ textDecoration: 'none' }}>
-          <div
-            className="glass-panel"
-            style={{
-              padding: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '30px',
-              flexWrap: 'wrap',
-              background: 'linear-gradient(135deg, #000, #1a1a1a)'
-            }}
-          >
-            <div style={{ fontSize: '5rem' }}>📱</div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ color: '#fff', fontSize: '1.8rem', marginBottom: '10px' }}>Скачай приложение</h2>
-              <p style={{ color: '#aaa' }}>Скидка 10% на первый заказ в приложении</p>
-            </div>
-            <button
-              style={{
-                background: 'var(--accent)',
-                color: '#000',
-                padding: '15px 30px',
-                borderRadius: '30px',
-                border: 'none',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Подробнее
-            </button>
-          </div>
-        </Link>
-      </section>
-
-      {/* ========================================== */}
-      {/* СЕКЦИЯ 19: КОНТАКТЫ */}
-      {/* ========================================== */}
-      <section style={{ padding: '40px 5%', borderTop: '1px solid #222', marginTop: '40px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <MapPin color="var(--accent)" size={30} />
-            <div>
-              <p style={{ color: '#fff', fontWeight: 'bold' }}>Адрес</p>
-              <p style={{ color: '#888', fontSize: '0.9rem' }}>ул. 2-я Воинская, 53</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Phone color="var(--accent)" size={30} />
-            <div>
-              <p style={{ color: '#fff', fontWeight: 'bold' }}>Телефон</p>
-              <p style={{ color: '#888', fontSize: '0.9rem' }}>+7 (951) 624-01-61</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Clock color="var(--accent)" size={30} />
-            <div>
-              <p style={{ color: '#fff', fontWeight: 'bold' }}>Режим работы</p>
-              <p style={{ color: '#888', fontSize: '0.9rem' }}>Ежедневно 11:00-23:00</p>
+              <div className="stack" style={{ height: 300, padding: 14, borderRadius: 20, background: 'linear-gradient(160deg, rgba(var(--accent-rgb),.10), transparent 60%)' }}>
+                <span className="badge badge-accent" style={{ alignSelf: 'flex-start' }}>URECHKI</span>
+                <div className="skeleton" style={{ height: 92, borderRadius: 12 }} />
+                <div className="skeleton" style={{ height: 14, width: '70%' }} />
+                <div className="skeleton" style={{ height: 14, width: '45%' }} />
+                <div className="skeleton" style={{ height: 36, borderRadius: 10, marginTop: 'auto' }} />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-    </motion.div>
+      {/* ================= CONTACTS ================= */}
+      <section className="section-sm container">
+        <div className="section-head center">
+          <span className="eyebrow">На связи</span>
+          <h2>Найти нас просто</h2>
+        </div>
+        <div className="grid grid-3">
+          <div className="card text-center stack" style={{ alignItems: 'center' }}>
+            <MapPin size={26} className="text-accent" />
+            <strong className="small">Адрес</strong>
+            <span className="small muted">Новосибирск, ул. 2-я Воинская, 53</span>
+          </div>
+          <div className="card text-center stack" style={{ alignItems: 'center' }}>
+            <Phone size={26} className="text-accent" />
+            <strong className="small">Телефон</strong>
+            <a className="small muted" href="tel:+79516240161">+7 (951) 624-01-61</a>
+          </div>
+          <div className="card text-center stack" style={{ alignItems: 'center' }}>
+            <Clock size={26} className="text-accent" />
+            <strong className="small">Режим работы</strong>
+            <span className="small muted">Ежедневно, 11:00–23:00</span>
+          </div>
+        </div>
+        <div className="text-center" style={{ marginTop: 24 }}>
+          <Link to="/contacts" className="btn btn-outline">Все контакты и филиалы <ArrowRight size={17} /></Link>
+        </div>
+      </section>
+
+      <QuickView product={quickView} onClose={() => setQuickView(null)} />
+    </div>
   );
 }

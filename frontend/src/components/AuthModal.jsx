@@ -1,87 +1,180 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Lock, Mail } from 'lucide-react';
+import Modal from './Modal';
 import { useAuth } from '../context/AuthContext';
 
-export default function AuthModal({ isOpen, onClose }) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Клиент');
-  const [error, setError] = useState(null);
-  const { login, register } = useAuth();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    
-    let result;
-    if (isLogin) {
-      result = await login(email, password);
-    } else {
-      result = await register(name, email, password, role);
+export default function AuthModal({ isOpen, onClose }) {
+  const { login, register } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [errors, setErrors] = useState({});
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const setField = (key) => (event) => {
+    setForm((prev) => ({ ...prev, [key]: event.target.value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+    setError('');
+  };
+
+  const switchMode = (loginMode) => {
+    setIsLogin(loginMode);
+    setErrors({});
+    setError('');
+    setForm((prev) => ({ ...prev, password: '' }));
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!isLogin && form.name.trim().length < 2) {
+      nextErrors.name = 'Укажите имя (минимум 2 символа)';
+    }
+    if (!EMAIL_RE.test(form.email.trim())) {
+      nextErrors.email = 'Введите корректный email';
+    }
+    if (form.password.length < 4) {
+      nextErrors.password = 'Пароль должен быть не короче 4 символов';
     }
 
-    if (result.success) {
-      onClose();
-    } else {
-      setError(result.message);
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      // Роль определяет сервер (админ — по email), селектор роли в форме не нужен.
+      const result = isLogin
+        ? await login(form.email.trim(), form.password)
+        : await register(form.name.trim(), form.email.trim(), form.password);
+
+      if (result.success) {
+        setForm({ name: '', email: '', password: '' });
+        setErrors({});
+        onClose?.();
+      } else {
+        setError(result.message || 'Не удалось выполнить запрос. Попробуйте ещё раз.');
+      }
+    } catch {
+      setError('Ошибка соединения с сервером. Попробуйте ещё раз.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(10px)' }} onClick={onClose}>
-          <motion.div initial={{ scale: 0.8, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 50 }} onClick={e => e.stopPropagation()} className="glass-panel" style={{ padding: '40px', width: '90%', maxWidth: '400px', position: 'relative' }}>
-            <X onClick={onClose} style={{ position: 'absolute', top: '20px', right: '20px', cursor: 'pointer', color: '#d4af37' }} />
-            
-            <h2 style={{ color: '#d4af37', textAlign: 'center', marginBottom: '30px', fontSize: '2rem' }}>
-              {isLogin ? 'Вход в аккаунт' : 'Регистрация'}
-            </h2>
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={isLogin ? 'Вход в аккаунт' : 'Регистрация'}
+      footer={
+        <button
+          type="submit"
+          form="auth-form"
+          className="btn btn-primary btn-block btn-lg"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? <><span className="spinner" /> Подождите…</> : isLogin ? 'Войти' : 'Зарегистрироваться'}
+        </button>
+      }
+    >
+      <div className="tabs" role="tablist" aria-label="Режим авторизации">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isLogin}
+          className={`tab ${isLogin ? 'tab-active' : ''}`}
+          onClick={() => switchMode(true)}
+        >
+          Вход
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!isLogin}
+          className={`tab ${!isLogin ? 'tab-active' : ''}`}
+          onClick={() => switchMode(false)}
+        >
+          Регистрация
+        </button>
+      </div>
 
-            {error && <div style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid #ff4444', color: '#ff4444', padding: '10px', borderRadius: '8px', marginBottom: '20px', textAlign: 'center' }}>{error}</div>}
-
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {!isLogin && (
-                <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 15px' }}>
-                  <User size={20} color="#888" />
-                  <input type="text" placeholder="Ваше Имя" required value={name} onChange={e => setName(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
-                </div>
-              )}
-              
-              <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 15px' }}>
-                <Mail size={20} color="#888" />
-                <input type="email" placeholder="Email (ivan@mail.ru)" required value={email} onChange={e => setEmail(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '10px 15px' }}>
-                <Lock size={20} color="#888" />
-                <input type="password" placeholder="Пароль (123)" required value={password} onChange={e => setPassword(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%' }} />
-              </div>
-
-              {!isLogin && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <select value={role} onChange={e => setRole(e.target.value)} style={{ background: '#111', border: '1px solid #333', color: '#fff', padding: '12px', borderRadius: '8px', outline: 'none' }}>
-                    <option value="Клиент">Клиент</option>
-                    <option value="Менеджер">Менеджер</option>
-                    <option value="Владелец">Владелец</option>
-                  </select>
-                </div>
-              )}
-
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" style={{ background: '#d4af37', color: '#000', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', marginTop: '10px' }}>
-                {isLogin ? 'ВОЙТИ' : 'ЗАРЕГИСТРИРОВАТЬСЯ'}
-              </motion.button>
-            </form>
-
-            <p style={{ color: '#aaa', textAlign: 'center', marginTop: '20px', cursor: 'pointer', fontSize: '0.9rem' }} onClick={() => { setIsLogin(!isLogin); setError(null); }}>
-              {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войти'}
-            </p>
-          </motion.div>
-        </motion.div>
+      {error && (
+        <div className="card" role="alert" style={{ borderColor: 'var(--danger)', marginBottom: 16 }}>
+          <span className="form-error">{error}</span>
+        </div>
       )}
-    </AnimatePresence>
+
+      <form id="auth-form" className="stack" onSubmit={handleSubmit} noValidate>
+        {!isLogin && (
+          <div className="form-group">
+            <label className="form-label" htmlFor="auth-name">Имя</label>
+            <input
+              id="auth-name"
+              className="input"
+              type="text"
+              autoComplete="name"
+              placeholder="Как к вам обращаться"
+              value={form.name}
+              onChange={setField('name')}
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? 'auth-name-error' : undefined}
+            />
+            {errors.name && <span className="form-error" id="auth-name-error" role="alert">{errors.name}</span>}
+          </div>
+        )}
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="auth-email">Email</label>
+          <input
+            id="auth-email"
+            className="input"
+            type="email"
+            autoComplete="email"
+            placeholder="ivan@mail.ru"
+            value={form.email}
+            onChange={setField('email')}
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? 'auth-email-error' : undefined}
+          />
+          {errors.email && <span className="form-error" id="auth-email-error" role="alert">{errors.email}</span>}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="auth-password">Пароль</label>
+          <input
+            id="auth-password"
+            className="input"
+            type="password"
+            autoComplete={isLogin ? 'current-password' : 'new-password'}
+            placeholder="Не менее 4 символов"
+            value={form.password}
+            onChange={setField('password')}
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? 'auth-password-error' : undefined}
+          />
+          {errors.password && <span className="form-error" id="auth-password-error" role="alert">{errors.password}</span>}
+        </div>
+      </form>
+
+      <p className="muted small text-center" style={{ marginTop: 18 }}>
+        {isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}{' '}
+        <button type="button" className="text-button" onClick={() => switchMode(!isLogin)}>
+          {isLogin ? 'Зарегистрируйтесь' : 'Войдите'}
+        </button>
+      </p>
+      {!isLogin && (
+        <p className="dim tiny text-center">
+          Роль назначается автоматически: доступ владельца определяется по email.
+        </p>
+      )}
+    </Modal>
   );
 }

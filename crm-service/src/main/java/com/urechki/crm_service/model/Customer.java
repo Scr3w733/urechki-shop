@@ -12,7 +12,8 @@ public class Customer {
     private String name;
     private String phone;
     private Integer discountPercent;
-    
+    private Integer bonusPoints;
+
     @Column(unique = true)
     private String email;
     private String password;
@@ -27,6 +28,8 @@ public class Customer {
     public void setPhone(String phone) { this.phone = phone; }
     public Integer getDiscountPercent() { return discountPercent; }
     public void setDiscountPercent(Integer discountPercent) { this.discountPercent = discountPercent; }
+    public Integer getBonusPoints() { return bonusPoints; }
+    public void setBonusPoints(Integer bonusPoints) { this.bonusPoints = bonusPoints; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }

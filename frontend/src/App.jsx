@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Copy, Check, Gift } from 'lucide-react';
+import { Copy, Check, Gift, X } from 'lucide-react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -10,61 +10,125 @@ import CustomCursor from './components/CustomCursor';
 import Navbar from './components/Navbar';
 import CartSidebar from './components/CartSidebar';
 import ScrollToTop from './components/ScrollToTop';
-import Preloader from './components/Preloader';
 import Footer from './components/Footer';
-import SocialProof from './components/SocialProof'; 
-import ChatBot from './components/ChatBot'; 
+import SocialProof from './components/SocialProof';
+import ChatBot from './components/ChatBot';
 import ScrollProgress from './components/ScrollProgress';
 import CookieBanner from './components/CookieBanner';
 import AppBanner from './components/AppBanner';
-import CommandPalette from './components/CommandPalette'; 
-
-import Home from './pages/Home';
-import About from './pages/About';
-import Production from './pages/Production';
-import Contacts from './pages/Contacts';
-import Reviews from './pages/Reviews';
-import ProductDetails from './pages/ProductDetails';
-import Catalog from './pages/Catalog';
-import FeaturePage from './pages/FeaturePage';
-import Profile from './pages/Profile';
-import Checkout from './pages/Checkout';
-import Roulette from './pages/Roulette';
-import MerchCustomizer from './pages/MerchCustomizer';
-import FAQ from './pages/FAQ';
-import Blog from './pages/Blog';
-import BlogPost from './pages/BlogPost'; 
-import AdminDashboard from './pages/AdminDashboard';
-import NotFound from './pages/NotFound';
-import AppPage from './pages/AppPage';
+import CommandPalette from './components/CommandPalette';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
+
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Production = lazy(() => import('./pages/Production'));
+const Contacts = lazy(() => import('./pages/Contacts'));
+const Reviews = lazy(() => import('./pages/Reviews'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const FeaturePage = lazy(() => import('./pages/FeaturePage'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const Roulette = lazy(() => import('./pages/Roulette'));
+const MerchCustomizer = lazy(() => import('./pages/MerchCustomizer'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const Blog = lazy(() => import('./pages/Blog'));
+const BlogPost = lazy(() => import('./pages/BlogPost'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const AppPage = lazy(() => import('./pages/AppPage'));
+
+const routes = [
+  ['/', Home],
+  ['/catalog', Catalog],
+  ['/about', About],
+  ['/production', Production],
+  ['/reviews', Reviews],
+  ['/contacts', Contacts],
+  ['/product/:id', ProductDetails],
+  ['/feature/:id', FeaturePage],
+  ['/profile', Profile],
+  ['/checkout', Checkout],
+  ['/roulette', Roulette],
+  ['/merch', MerchCustomizer],
+  ['/faq', FAQ],
+  ['/blog', Blog],
+  ['/blog/:id', BlogPost],
+  ['/admin', AdminDashboard],
+  ['/app', AppPage],
+];
+
+function RouteLoader() {
+  return (
+    <div className="container section" style={{ minHeight: '50vh', display: 'grid', placeItems: 'center' }}>
+      <div className="stack center text-center">
+        <div className="spinner" style={{ width: 34, height: 34, margin: '0 auto' }} />
+        <span className="muted small">Загружаем страницу…</span>
+      </div>
+    </div>
+  );
+}
 
 function PromoPill() {
   const [copied, setCopied] = useState(false);
   const [userName, setUserName] = useState(null);
+  const [hidden, setHidden] = useState(false);
+
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem('urechki_active_user');
       if (savedUser) {
         const user = JSON.parse(savedUser);
-        if (user && user.name) setUserName(user.name);
+        if (user?.name) setUserName(user.name);
       }
-    } catch (e) { console.log(e); }
+      setHidden(localStorage.getItem('urechki_promo_hidden') === '1');
+    } catch (e) {
+      console.warn(e);
+    }
   }, []);
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText('URE4KA');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText('URE4KA');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
+
+  if (hidden) return null;
+
   return (
-    <motion.div initial={{ x: -100 }} animate={{ x: 0 }} transition={{ delay: 3, type: 'spring' }} style={{ position: 'fixed', top: '100px', left: '-5px', background: 'linear-gradient(90deg, var(--accent), #fff)', padding: '10px 15px 10px 10px', borderRadius: '0 20px 20px 0', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 9990, boxShadow: '5px 5px 20px rgba(0,0,0,0.5)', cursor: 'none', maxWidth: '250px' }} onClick={copyToClipboard} whileHover={{ scale: 1.05, x: 5 }}>
-      <Gift size={24} color="#000" style={{ flexShrink: 0 }} />
+    <motion.div
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ delay: 1.8, type: 'spring' }}
+      className="promo-pill"
+      onClick={copyToClipboard}
+      whileHover={{ scale: 1.03, x: 4 }}
+    >
+      <button
+        className="promo-pill-close"
+        onClick={(e) => {
+          e.stopPropagation();
+          setHidden(true);
+          localStorage.setItem('urechki_promo_hidden', '1');
+        }}
+        aria-label="Скрыть промокод"
+      >
+        <X size={13} />
+      </button>
+      <Gift size={22} color="#000" style={{ flexShrink: 0 }} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '0.75rem', color: '#000', fontWeight: 'bold' }}>{userName ? `Промокод для ${userName}` : 'Промокод на скидку'}</span>
-        <span style={{ fontSize: '1.1rem', color: '#000', fontWeight: 900, letterSpacing: '1px' }}>URE4KA</span>
+        <span style={{ fontSize: '0.68rem', color: '#000', fontWeight: 800 }}>
+          {userName ? `Для ${userName}` : 'Промокод'}
+        </span>
+        <span style={{ fontSize: '1.05rem', color: '#000', fontWeight: 900, letterSpacing: '1px' }}>URE4KA</span>
       </div>
-      <div style={{ background: '#000', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', flexShrink: 0 }}>
-        {copied ? <Check size={16} color="var(--accent)" /> : <Copy size={16} color="var(--accent)" />}
+      <div style={{ background: '#000', padding: 6, borderRadius: '50%', display: 'flex', marginLeft: 'auto' }}>
+        {copied ? <Check size={15} color="var(--accent)" /> : <Copy size={15} color="var(--accent)" />}
       </div>
     </motion.div>
   );
@@ -74,68 +138,49 @@ function AnimatedRoutes() {
   const location = useLocation();
   return (
     <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Home />} />
-        <Route path="/catalog" element={<Catalog />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/production" element={<Production />} />
-        <Route path="/reviews" element={<Reviews />} />
-        <Route path="/contacts" element={<Contacts />} />
-        <Route path="/product/:id" element={<ProductDetails />} />
-        <Route path="/feature/:id" element={<FeaturePage />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/roulette" element={<Roulette />} />
-        <Route path="/merch" element={<MerchCustomizer />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/blog" element={<Blog />} />
-        <Route path="/blog/:id" element={<BlogPost />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/app" element={<AppPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.22 }}
+      >
+        <ErrorBoundary>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes location={location}>
+              {routes.map(([path, Component]) => <Route key={path} path={path} element={<Component />} />)}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      </motion.div>
     </AnimatePresence>
   );
 }
 
-function App() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setTimeout(() => setLoading(false), 2000);
-  }, []);
-
+export default function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
           <CartProvider>
-            <AnimatePresence>
-              {loading && <Preloader />}
-            </AnimatePresence>
-            
             <CustomCursor />
-
             <Router>
-              <CommandPalette /> 
-
-              <div className="super-bg">
-                <div className="particles"></div>
-                <div className="rays"></div>
-                <div className="cyber-grid"></div>
-                <div className="blob blob-1"></div>
-                <div className="blob blob-2"></div>
-                <div className="blob blob-3"></div>
+              <CommandPalette />
+              <div className="super-bg" aria-hidden="true">
+                <div className="particles" />
+                <div className="rays" />
+                <div className="cyber-grid" />
+                <div className="blob blob-1" />
+                <div className="blob blob-2" />
+                <div className="blob blob-3" />
               </div>
-              
               <ScrollProgress />
               <Navbar />
               <CartSidebar />
               <PromoPill />
               <AppBanner />
-              
-              <AnimatedRoutes />
-              
+              <main id="main-content"><AnimatedRoutes /></main>
               <Footer />
               <SocialProof />
               <ChatBot />
@@ -148,5 +193,3 @@ function App() {
     </ThemeProvider>
   );
 }
-
-export default App;

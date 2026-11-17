@@ -1,62 +1,97 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Beer, Send, Globe, Camera, PlayCircle, Phone, Mail, MapPin } from 'lucide-react';
+import { Beer, Send, Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+
+const columns = [
+  {
+    title: 'Магазин',
+    links: [
+      ['/catalog', 'Каталог'],
+      ['/product/1', 'Хиты продаж'],
+      ['/merch', 'Мерч'],
+      ['/roulette', 'Рулетка'],
+      ['/app', 'Приложение'],
+    ],
+  },
+  {
+    title: 'Компания',
+    links: [
+      ['/about', 'О нас'],
+      ['/production', 'Производство'],
+      ['/reviews', 'Отзывы'],
+      ['/blog', 'Блог'],
+      ['/contacts', 'Контакты'],
+    ],
+  },
+  {
+    title: 'Помощь',
+    links: [
+      ['/faq', 'Вопросы и ответы'],
+      ['/profile', 'Мой профиль'],
+      ['/checkout', 'Доставка и оплата'],
+    ],
+  },
+];
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const { addNotification } = useNotification();
+
+  const subscribe = (e) => {
+    e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      addNotification('Введите корректный email', 'error');
+      return;
+    }
+    localStorage.setItem('urechki_newsletter', email);
+    addNotification('Готово! Расскажем о новых сортах первыми', 'success');
+    setEmail('');
+  };
+
   return (
-    <footer style={{ background: '#050505', borderTop: '1px solid rgba(212,175,55,0.2)', padding: '80px 10% 30px', marginTop: '100px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '40px', marginBottom: '60px' }}>
-        
-        {/* Колонка 1: Лого */}
-        <div>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '2rem', fontWeight: 900, color: '#d4af37', marginBottom: '20px' }}>
-            <Beer size={40} /> У РЕЧУШКИ
-          </Link>
-          <p style={{ color: '#888', lineHeight: '1.8', marginBottom: '20px' }}>
-            Настоящий сибирский крафт. Мы варим пиво с душой с 2015 года. Присоединяйтесь к нашей культуре!
-          </p>
-          <div style={{ display: 'flex', gap: '15px', color: '#d4af37' }}>
-            <Globe style={{ cursor: 'pointer' }} />
-            <Camera style={{ cursor: 'pointer' }} />
-            <PlayCircle style={{ cursor: 'pointer' }} />
+    <footer className="site-footer">
+      <div className="container">
+        <div className="footer-grid">
+          <div>
+            <Link to="/" className="brand" style={{ fontSize: '1.35rem', marginBottom: 18 }}>
+              <span className="brand-mark"><Beer size={24} /></span> У РЕЧУШКИ
+            </Link>
+            <p className="small">Настоящий сибирский крафт с 2015 года. Варим с душой, разливаем с характером.</p>
+            <div className="flex gap-2" style={{ marginTop: 20 }}>
+              <a className="icon-btn" href="https://vk.com" target="_blank" rel="noreferrer" aria-label="ВКонтакте"><MessageCircle size={18} /></a>
+            </div>
+          </div>
+
+          {columns.map(column => (
+            <div key={column.title}>
+              <h4 style={{ fontSize: '1rem', marginBottom: 18, fontFamily: 'Manrope, sans-serif' }}>{column.title}</h4>
+              <div className="stack" style={{ gap: 11 }}>
+                {column.links.map(([to, label]) => (
+                  <Link key={to} to={to} className="nav-link small muted">{label}</Link>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div>
+            <h4 style={{ fontSize: '1rem', marginBottom: 18, fontFamily: 'Manrope, sans-serif' }}>Контакты</h4>
+            <div className="stack" style={{ gap: 13 }}>
+              <span className="flex gap-2 small muted"><Phone size={16} className="text-accent" /> +7 (951) 624-01-61</span>
+              <span className="flex gap-2 small muted"><Mail size={16} className="text-accent" /> info@urechki.ru</span>
+              <span className="flex gap-2 small muted" style={{ alignItems: 'flex-start' }}><MapPin size={16} className="text-accent" /> Новосибирск, ул. 2-я Воинская, 53</span>
+            </div>
+            <form onSubmit={subscribe} className="footer-subscribe">
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Ваш email" aria-label="Email для подписки" />
+              <button type="submit" aria-label="Подписаться"><Send size={17} /></button>
+            </form>
           </div>
         </div>
 
-        {/* Колонка 2: Меню */}
-        <div>
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '20px' }}>Навигация</h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px', color: '#888' }}>
-            <li><Link to="/catalog" className="nav-link">Каталог товаров</Link></li>
-            <li><Link to="/about" className="nav-link">История компании</Link></li>
-            <li><Link to="/production" className="nav-link">Производство</Link></li>
-            <li><Link to="/reviews" className="nav-link">Отзывы</Link></li>
-            <li><Link to="/contacts" className="nav-link">Контакты</Link></li>
-          </ul>
+        <div className="footer-bottom">
+          <span>© 2026 Пивоварня «У Речушки». Все права защищены.</span>
+          <span className="text-accent">Разработка сайта: Притчин Владимир, группа 9-прг401</span>
         </div>
-
-        {/* Колонка 3: Контакты */}
-        <div>
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '20px' }}>Контакты</h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '15px', color: '#888' }}>
-            <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Phone size={18} color="#d4af37" /> +7 (951) 624-01-61</li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Mail size={18} color="#d4af37" /> info@urechki.ru</li>
-            <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}><MapPin size={18} color="#d4af37" /> г. Новосибирск, ул. 2-я Воинская, 53</li>
-          </ul>
-        </div>
-
-        {/* Колонка 4: Рассылка */}
-        <div>
-          <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '20px' }}>Подписка на новинки</h3>
-          <p style={{ color: '#888', marginBottom: '15px' }}>Узнавайте первыми о новых сортах и закрытых акциях.</p>
-          <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333' }}>
-            <input type="email" placeholder="Ваш Email" style={{ background: 'transparent', border: 'none', padding: '15px', color: '#fff', flex: 1, outline: 'none' }} />
-            <button style={{ background: '#d4af37', border: 'none', padding: '0 20px', cursor: 'pointer' }}><Send size={20} color="#000" /></button>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ borderTop: '1px solid #222', paddingTop: '20px', textAlign: 'center', color: '#555', fontSize: '0.9rem' }}>
-        © 2026 Пивоварня «У Речушки». Все права защищены. <br/>
-        <span style={{ color: '#d4af37' }}>Разработка сайта: Притчин Владимир, группа 9-прг401</span>
       </div>
     </footer>
   );

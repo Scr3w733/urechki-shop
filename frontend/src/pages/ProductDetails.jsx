@@ -1,272 +1,454 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Minus, Star, ShoppingBag, Heart, MessageSquare, ShieldCheck, Truck, RefreshCcw, Share2, Link as LinkIcon, Check } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Heart,
+  MessageSquare,
+  PackageX,
+  RefreshCcw,
+  Share2,
+  ShieldCheck,
+  ShoppingBag,
+  Star,
+  Truck,
+  Zap,
+} from 'lucide-react';
+import ProductCard from '../components/ProductCard';
+import QuickView from '../components/QuickView';
+import EmptyState from '../components/EmptyState';
+import { LineSkeleton, ProductGridSkeleton } from '../components/Skeleton';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
+import { categoryEmoji, categoryGradient, formatPrice, productRating, productReviews } from '../utils/product';
 
-const names = ["Алексей", "Мария", "Дмитрий", "Ольга", "Сергей", "Анна", "Иван", "Елена", "Максим", "Татьяна"];
-const texts = ["Отличное место! Пиво всегда свежее.", "Беру мерч уже второй раз.", "Лучший стаут в городе.", "Приятная атмосфера.", "Сухарики просто огонь.", "Крафт реально достойный."];
+const DEMO_NAMES = ['Алексей', 'Мария', 'Дмитрий', 'Ольга', 'Сергей'];
+const DEMO_TEXTS = [
+  'Пиво всегда свежее, беру с удовольствием.',
+  'Отличный вкус, друзьям тоже понравилось.',
+  'Заказываю не в первый раз — качество стабильное.',
+  'Быстрая доставка и аккуратная упаковка.',
+  'Достойный крафт по хорошей цене.',
+];
+
+const readReviews = (id) => {
+  try {
+    const raw = localStorage.getItem(`urechki_reviews_${id}`);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export default function ProductDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const { user, toggleWishlist, isInWishlist } = useAuth();
+  const { addNotification } = useNotification();
+
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
-  const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
+
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('desc');
-  const [showStickyBar, setShowStickyBar] = useState(false);
-  const [selectedSize, setSelectedSize] = useState('M');
-  const [copySuccess, setCopySuccess] = useState(false);
-  
-  const { addToCart } = useCart();
-  const { toggleWishlist, isInWishlist, user } = useAuth();
-  
-  const [userReviews, setUserReviews] = useState([]);
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
+
+  const [userReviews, setUserReviews] = useState(() => readReviews(id));
   const [newReview, setNewReview] = useState({ rating: 5, text: '' });
 
-  const [mockReviews] = useState(() => {
-    const seed = parseInt(id) || 1;
-    return Array.from({ length: 3 }).map((_, i) => ({
-      name: names[(seed + i) % names.length],
-      text: texts[(seed + i * 2) % texts.length],
+  const demoReviews = (() => {
+    const seed = Number(id) || 1;
+    return Array.from({ length: 3 }, (_, index) => ({
+      name: DEMO_NAMES[(seed + index) % DEMO_NAMES.length],
+      text: DEMO_TEXTS[(seed + index * 2) % DEMO_TEXTS.length],
       rating: 5,
-      date: `${10 + i} ноября 2026`
+      date: `${10 + index} ноября 2026`,
     }));
-  });
+  })();
 
   useEffect(() => {
-    window.scrollTo(0, 0); // Скролл наверх при загрузке
-
-    axios.get(`/api/products/${id}`)
-      .then(res => {
-        setProduct(res.data);
-        const saved = JSON.parse(localStorage.getItem('urechki_recently_viewed') || '[]');
-        const filtered = saved.filter(p => p.id !== res.data.id);
-        const updated = [res.data, ...filtered].slice(0, 4);
-        localStorage.setItem('urechki_recently_viewed', JSON.stringify(updated));
-        setRecentlyViewed(filtered.slice(0, 4));
-      })
-      .catch(err => console.log(err));
-      
-    axios.get('/api/products')
-      .then(res => setRelated(res.data.filter(p => p.id.toString() !== id).slice(0, 4)))
-      .catch(err => console.log(err));
-
-    const savedReviews = JSON.parse(localStorage.getItem(`urechki_reviews_${id}`) || '[]');
-    setUserReviews(savedReviews);
-
-    const handleScroll = () => {
-      if (window.scrollY > 400) setShowStickyBar(true);
-      else setShowStickyBar(false);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.scrollTo(0, 0);
   }, [id]);
 
-  const handleSubmitReview = (e) => {
-    e.preventDefault();
-    if (!user) return alert("Войдите, чтобы оставить отзыв!");
-    const review = { name: user.name, text: newReview.text, rating: newReview.rating, date: new Date().toLocaleDateString() };
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    setNotFound(false);
+    setProduct(null);
+    setQuantity(1);
+
+    axios.get(`/api/products/${id}`, { signal: controller.signal })
+      .then((response) => { if (!cancelled) setProduct(response.data); })
+      .catch((requestError) => {
+        if (cancelled || axios.isCancel(requestError)) return;
+        const status = requestError.response?.status;
+        const message = requestError.response?.data?.message
+          || (status === 404 ? 'Товар не найден' : 'Не удалось загрузить товар');
+        setNotFound(status === 404);
+        setError(message);
+        if (status !== 404) addNotification(message, 'error');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [id, addNotification]);
+
+  useEffect(() => {
+    if (!product?.category) return undefined;
+    const controller = new AbortController();
+    let cancelled = false;
+    setRelatedLoading(true);
+    axios.get('/api/products', { params: { category: product.category }, signal: controller.signal })
+      .then((response) => {
+        if (cancelled) return;
+        const list = Array.isArray(response.data) ? response.data : [];
+        setRelated(list.filter((item) => String(item.id) !== String(id)).slice(0, 4));
+      })
+      .catch((requestError) => {
+        if (cancelled || axios.isCancel(requestError)) return;
+        setRelated([]);
+        const message = requestError.response?.data?.message || 'Не удалось загрузить похожие товары';
+        addNotification(message, 'error');
+      })
+      .finally(() => { if (!cancelled) setRelatedLoading(false); });
+    return () => { cancelled = true; controller.abort(); };
+  }, [product?.category, id, addNotification]);
+
+  useEffect(() => {
+    setUserReviews(readReviews(id));
+    setNewReview({ rating: 5, text: '' });
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="container section-sm">
+        <div className="grid grid-2 gap-3" style={{ alignItems: 'start' }}>
+          <div className="skeleton" style={{ minHeight: 420, borderRadius: 20 }} />
+          <div className="stack">
+            <LineSkeleton width="35%" />
+            <LineSkeleton width="75%" height={34} />
+            <LineSkeleton width="45%" height={26} />
+            <LineSkeleton width="100%" height={90} />
+            <LineSkeleton width="70%" height={52} />
+            <LineSkeleton width="100%" height={48} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="container section-sm">
+        <EmptyState
+          icon={<PackageX size={46} />}
+          title={notFound ? 'Товар не найден' : 'Не удалось открыть товар'}
+          description={error || 'Попробуйте вернуться в каталог и выбрать другой товар.'}
+          action={<Link className="btn btn-primary" to="/catalog">Вернуться в каталог</Link>}
+        />
+      </div>
+    );
+  }
+
+  const maxQuantity = product.stockQuantity ?? 0;
+  const inStock = maxQuantity > 0;
+  const favorite = isInWishlist(product.id);
+  const reviews = [...userReviews, ...demoReviews];
+  const sku = `UR-${String(product.id).padStart(5, '0')}`;
+
+  const handleFavorite = () => {
+    if (!user) {
+      addNotification('Войдите, чтобы добавлять товары в избранное', 'info');
+      return;
+    }
+    toggleWishlist(product);
+    addNotification(favorite ? 'Удалено из избранного' : 'Добавлено в избранное', 'success');
+  };
+
+  const handleBuyNow = () => {
+    addToCart(product, quantity);
+    navigate('/checkout');
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      addNotification('Ссылка на товар скопирована', 'success');
+    } catch {
+      addNotification('Не удалось скопировать ссылку', 'error');
+    }
+  };
+
+  const handleSubmitReview = (event) => {
+    event.preventDefault();
+    if (!user) {
+      addNotification('Войдите, чтобы оставить отзыв', 'info');
+      return;
+    }
+    const text = newReview.text.trim();
+    if (!text) {
+      addNotification('Напишите текст отзыва', 'error');
+      return;
+    }
+    const review = {
+      name: user.name || 'Покупатель',
+      text,
+      rating: newReview.rating,
+      date: new Date().toLocaleDateString('ru-RU'),
+    };
     const updated = [review, ...userReviews];
     setUserReviews(updated);
     localStorage.setItem(`urechki_reviews_${id}`, JSON.stringify(updated));
     setNewReview({ rating: 5, text: '' });
+    addNotification('Спасибо! Ваш отзыв опубликован', 'success');
   };
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
-  };
-
-  if (!product) return <div style={{ padding: '100px', textAlign: 'center', color: 'var(--accent)' }}>Загрузка...</div>;
-
-  const allReviews = [...userReviews, ...mockReviews];
-  const sticker = product.category === 'Пиво' ? '🍻' : product.category === 'Закуски' ? '🍟' : '👕';
 
   return (
-    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} style={{ padding: 'clamp(20px, 5vw, 80px) 5%', minHeight: '80vh', paddingBottom: '120px' }}>
-      
-      {/* ХЛЕБНЫЕ КРОШКИ */}
-      <div style={{ display: 'flex', gap: '10px', color: '#888', fontSize: '0.9rem', marginBottom: '30px' }}>
-        <Link to="/" style={{ hover: { color: 'var(--accent)' } }}>Главная</Link> <span>/</span>
-        <Link to="/catalog">Каталог</Link> <span>/</span>
-        <span style={{ color: 'var(--accent)' }}>{product.name}</span>
-      </div>
+    <div className="container section-sm">
+      <nav className="flex gap-2 wrap small muted" aria-label="Навигационная цепочка" style={{ marginBottom: 24 }}>
+        <Link to="/" className="nav-link">Главная</Link>
+        <span>/</span>
+        <Link to="/catalog" className="nav-link">Каталог</Link>
+        <span>/</span>
+        <span className="text-accent">{product.name}</span>
+      </nav>
 
-      <Link to="/catalog" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', color: 'var(--accent)', marginBottom: '30px', fontWeight: 'bold' }}>
-        <ArrowLeft size={20} /> Назад в каталог
+      <Link to="/catalog" className="btn btn-ghost btn-sm" style={{ marginBottom: 24 }}>
+        <ArrowLeft size={16} /> Назад в каталог
       </Link>
-      
-      <div style={{ display: 'flex', gap: '50px', flexWrap: 'wrap', marginBottom: '80px' }}>
-        {/* ЛЕВАЯ ЧАСТЬ: ФОТО */}
-        <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ flex: 1, minWidth: '300px', height: 'clamp(300px, 50vh, 500px)', background: 'linear-gradient(135deg, #1e1e1e 0%, #111 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #444', fontSize: '12rem', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', position: 'relative' }}>
-           {sticker}
-           <button onClick={() => toggleWishlist(product)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-             <Heart size={24} fill={isInWishlist(product.id) ? '#ff4444' : 'transparent'} color={isInWishlist(product.id) ? '#ff4444' : '#fff'} />
-           </button>
-        </motion.div>
-        
-        {/* ПРАВАЯ ЧАСТЬ: ИНФО */}
-        <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <span style={{ background: 'var(--accent)', color: '#000', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ХИТ ПРОДАЖ</span>
-            <div style={{ display: 'flex', color: 'var(--accent)' }}><Star fill="var(--accent)" size={16}/><Star fill="var(--accent)" size={16}/><Star fill="var(--accent)" size={16}/><Star fill="var(--accent)" size={16}/><Star fill="var(--accent)" size={16}/></div>
+
+      <div className="grid grid-2 gap-3" style={{ alignItems: 'start' }}>
+        <div
+          className="product-media"
+          style={{ background: categoryGradient(product.category), minHeight: 420, fontSize: '10rem', borderRadius: 20 }}
+        >
+          <span>{categoryEmoji(product.category)}</span>
+          <div className="flex wrap gap-2" style={{ position: 'absolute', top: 16, left: 16, zIndex: 2 }}>
+            <span className="badge badge-accent">{product.category}</span>
+            <span className={`badge ${inStock ? 'badge-success' : 'badge-danger'}`}>
+              {inStock ? `В наличии: ${maxQuantity}` : 'Нет в наличии'}
+            </span>
           </div>
-          
-          <p style={{ color: '#aaa', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 'bold' }}>{product.category}</p>
-          <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)', color: '#fff', margin: '10px 0 20px', lineHeight: '1.1' }}>{product.name}</h1>
-          
-          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)', marginBottom: '20px' }}>{product.price} ₽</div>
+        </div>
 
-          {/* ВЫБОР РАЗМЕРА (Для одежды) */}
-          {product.category === 'Мерч' && (
-            <div style={{ marginBottom: '30px' }}>
-              <p style={{ color: '#ccc', marginBottom: '10px' }}>Выберите размер:</p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {['S', 'M', 'L', 'XL'].map(size => (
-                  <button key={size} onClick={() => setSelectedSize(size)} style={{ width: '45px', height: '45px', borderRadius: '8px', background: selectedSize === size ? 'var(--accent)' : '#111', color: selectedSize === size ? '#000' : '#fff', border: '1px solid var(--accent)', fontWeight: 'bold', cursor: 'pointer' }}>{size}</button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* КОЛИЧЕСТВО И КНОПКИ */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '8px' }}>
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ background: 'transparent', border: 'none', color: '#fff', padding: '10px 15px', cursor: 'pointer' }}><Minus size={18}/></button>
-              <span style={{ color: '#fff', fontSize: '1.2rem', width: '40px', textAlign: 'center' }}>{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} style={{ background: 'transparent', border: 'none', color: '#fff', padding: '10px 15px', cursor: 'pointer' }}><Plus size={18}/></button>
-            </div>
-            
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { for(let i=0; i<quantity; i++) addToCart({...product, name: product.category === 'Мерч' ? `${product.name} (Размер: ${selectedSize})` : product.name}); }} style={{ flex: 1, padding: '20px', background: 'var(--accent)', color: '#000', fontSize: '1.1rem', fontWeight: 900, border: 'none', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
-              <ShoppingBag size={20} /> ДОБАВИТЬ В КОРЗИНУ
-            </motion.button>
+        <div className="stack" style={{ gap: 18 }}>
+          <div className="flex gap-2 wrap">
+            <span className="rating">
+              <Star size={15} fill="currentColor" /> {productRating(product)}
+            </span>
+            <span className="muted small">{productReviews(product)} отзывов</span>
+            <span className="badge">Артикул {sku}</span>
           </div>
 
-          {/* БЕЙДЖИ ДОВЕРИЯ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '30px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#111', padding: '15px 10px', borderRadius: '10px', textAlign: 'center' }}>
-              <Truck size={24} color="var(--accent)" style={{ marginBottom: '5px' }} />
-              <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Доставка за 1-2 часа</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#111', padding: '15px 10px', borderRadius: '10px', textAlign: 'center' }}>
-              <ShieldCheck size={24} color="var(--accent)" style={{ marginBottom: '5px' }} />
-              <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Безопасная оплата</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#111', padding: '15px 10px', borderRadius: '10px', textAlign: 'center' }}>
-              <RefreshCcw size={24} color="var(--accent)" style={{ marginBottom: '5px' }} />
-              <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Гарантия качества</span>
-            </div>
+          <div>
+            <span className="eyebrow">{product.category}</span>
+            <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}>{product.name}</h1>
           </div>
 
-          {/* СОЦИАЛЬНЫЕ СЕТИ */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span style={{ color: '#aaa', fontSize: '0.9rem' }}><Share2 size={16} style={{ display: 'inline', verticalAlign: 'middle' }}/> Поделиться:</span>
-            <button onClick={copyLink} style={{ background: '#111', border: '1px solid #333', color: '#fff', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-               {copySuccess ? <Check size={14} color="var(--accent)"/> : <LinkIcon size={14} />} {copySuccess ? 'Скопировано!' : 'Копировать ссылку'}
+          <div className="price" style={{ fontSize: '2.4rem' }}>{formatPrice(product.price)}</div>
+
+          {product.description && <p className="muted">{product.description}</p>}
+
+          <div className="flex gap-2 wrap">
+            <div className="qty">
+              <button
+                type="button"
+                onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+                disabled={quantity <= 1}
+                aria-label="Уменьшить количество"
+              >
+                −
+              </button>
+              <span>{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity((value) => Math.min(maxQuantity || 1, value + 1))}
+                disabled={!inStock || quantity >= maxQuantity}
+                aria-label="Увеличить количество"
+              >
+                +
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              disabled={!inStock}
+              onClick={() => addToCart(product, quantity)}
+            >
+              <ShoppingBag size={19} /> В корзину
+            </button>
+
+            <button
+              type="button"
+              className={`btn ${favorite ? 'btn-primary' : 'btn-outline'} btn-lg`}
+              onClick={handleFavorite}
+            >
+              <Heart size={19} fill={favorite ? 'currentColor' : 'transparent'} />
+              {favorite ? 'В избранном' : 'В избранное'}
             </button>
           </div>
 
-        </div>
-      </div>
-
-      {/* ВКЛАДКИ (ОПИСАНИЕ, СОСТАВ, ОТЗЫВЫ) */}
-      <div style={{ marginBottom: '80px' }}>
-        <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #333', marginBottom: '30px', overflowX: 'auto' }}>
-          {['desc', 'comp', 'reviews'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ background: 'transparent', border: 'none', color: activeTab === tab ? 'var(--accent)' : '#888', fontSize: '1.1rem', fontWeight: 'bold', padding: '0 0 15px 0', borderBottom: activeTab === tab ? '2px solid var(--accent)' : 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {tab === 'desc' ? 'Описание' : tab === 'comp' ? 'Состав' : `Отзывы (${allReviews.length})`}
+          <div className="flex gap-2 wrap">
+            <button type="button" className="btn btn-outline" disabled={!inStock} onClick={handleBuyNow}>
+              <Zap size={17} /> Купить сейчас
             </button>
-          ))}
-        </div>
-        
-        <div style={{ color: '#ccc', lineHeight: '1.8', fontSize: '1.1rem' }}>
-          {activeTab === 'desc' && <p>{product.description}. Наша продукция проходит строгий контроль качества. Это идеальный выбор как для повседневного ужина, так и для шумной вечеринки с друзьями. Попробуйте и вы поймете, почему нас выбирают!</p>}
-          {activeTab === 'comp' && (
-            <div>
-              <h3 style={{ color: '#fff', marginBottom: '10px' }}>Из чего это сделано?</h3>
-              <p>Мы используем только натуральные ингредиенты. В составе нет ГМО, искусственных красителей и усилителей вкуса. Продукт соответствует всем стандартам ГОСТ и СанПиН.</p>
-            </div>
-          )}
-          
-          {activeTab === 'reviews' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-              {/* Форма добавления отзыва */}
-              <div style={{ background: '#111', padding: '20px', borderRadius: '10px', border: '1px solid #333' }}>
-                <h3 style={{ color: '#fff', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}><MessageSquare size={20} color="var(--accent)"/> Оставить отзыв</h3>
-                {user ? (
-                  <form onSubmit={handleSubmitReview} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ color: '#aaa' }}>Ваша оценка:</span>
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <Star key={star} size={24} style={{ cursor: 'pointer' }} fill={star <= newReview.rating ? 'var(--accent)' : 'transparent'} color="var(--accent)" onClick={() => setNewReview({...newReview, rating: star})} />
-                      ))}
-                    </div>
-                    <textarea required placeholder="Поделитесь впечатлениями о продукте..." value={newReview.text} onChange={e => setNewReview({...newReview, text: e.target.value})} style={{ width: '100%', padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '8px', minHeight: '80px', outline: 'none', resize: 'vertical' }} />
-                    <button type="submit" style={{ background: 'var(--accent)', color: '#000', padding: '12px 20px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', alignSelf: 'flex-start' }}>Отправить</button>
-                  </form>
-                ) : (
-                  <p style={{ color: '#aaa' }}>Пожалуйста, войдите в аккаунт, чтобы оставить отзыв.</p>
-                )}
-              </div>
-
-              {/* Список отзывов */}
-              {allReviews.map((rev, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '10px', borderLeft: '3px solid var(--accent)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <strong style={{ color: '#fff' }}>{rev.name}</strong>
-                    <span style={{ color: 'var(--accent)' }}>{'★'.repeat(rev.rating)}</span>
-                  </div>
-                  <p style={{ color: '#aaa', fontStyle: 'italic', marginBottom: '10px' }}>"{rev.text}"</p>
-                  <span style={{ color: '#666', fontSize: '0.8rem' }}>{rev.date}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ПОХОЖИЕ ТОВАРЫ */}
-      <div style={{ marginTop: '60px', borderTop: '1px solid #333', paddingTop: '40px' }}>
-        <h2 style={{ fontSize: '2rem', color: 'var(--accent)', marginBottom: '30px' }}>Часто покупают вместе</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-          {related.map((item) => (
-            <Link key={item.id} to={`/product/${item.id}`}>
-              <motion.div whileHover={{ y: -5 }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ height: '150px', background: '#111', borderRadius: '10px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4rem' }}>
-                  {item.category === 'Пиво' ? '🍻' : item.category === 'Закуски' ? '🍟' : '👕'}
-                </div>
-                <h3 style={{ fontSize: '1rem', color: '#fff' }}>{item.name}</h3>
-                <p style={{ color: 'var(--accent)', fontWeight: 'bold', marginTop: '5px' }}>{item.price} ₽</p>
-              </motion.div>
-            </Link>
-          ))}
-          
-        </div>
-      </div>
-
-
-
-      {/* STICKY ПАНЕЛЬ (Прилипающая кнопка) */}
-      <AnimatePresence>
-        {showStickyBar && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', background: 'rgba(15,15,15,0.95)', backdropFilter: 'blur(15px)', borderTop: '1px solid var(--accent)', padding: '15px 5%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 9999, boxShadow: '0 -5px 20px rgba(0,0,0,0.5)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <div style={{ fontSize: '2rem' }}>{sticker}</div>
-              <div>
-                <h3 style={{ color: '#fff', fontSize: '1rem', display: window.innerWidth > 768 ? 'block' : 'none' }}>{product.name}</h3>
-                <span style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.2rem' }}>{product.price} ₽</span>
-              </div>
-            </div>
-            <button onClick={() => addToCart(product)} style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '12px 30px', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <ShoppingBag size={20} /> В КОРЗИНУ
+            <button type="button" className="btn btn-ghost" onClick={handleCopyLink}>
+              <Share2 size={17} /> Поделиться
             </button>
-          </motion.div>
+          </div>
+
+          {!inStock && <p className="small muted">Товар временно отсутствует на складе.</p>}
+
+          <div className="flex gap-2 wrap">
+            <span className="badge"><Truck size={14} /> Доставка за 1–2 часа</span>
+            <span className="badge"><ShieldCheck size={14} /> Безопасная оплата</span>
+            <span className="badge"><RefreshCcw size={14} /> Гарантия качества</span>
+          </div>
+        </div>
+      </div>
+
+      <section className="card" style={{ marginTop: 48 }}>
+        <div className="tabs">
+          <button type="button" className={`tab ${activeTab === 'desc' ? 'tab-active' : ''}`} onClick={() => setActiveTab('desc')}>
+            Описание
+          </button>
+          <button type="button" className={`tab ${activeTab === 'specs' ? 'tab-active' : ''}`} onClick={() => setActiveTab('specs')}>
+            Характеристики
+          </button>
+          <button type="button" className={`tab ${activeTab === 'delivery' ? 'tab-active' : ''}`} onClick={() => setActiveTab('delivery')}>
+            Доставка и оплата
+          </button>
+        </div>
+
+        {activeTab === 'desc' && (
+          <div className="stack">
+            <p>{product.description || 'Описание товара появится позже.'}</p>
+            <p className="muted">
+              Наша продукция проходит строгий контроль качества: используем только натуральные ингредиенты
+              и бережно упаковываем каждый заказ.
+            </p>
+          </div>
         )}
-      </AnimatePresence>
-    </motion.div>
+
+        {activeTab === 'specs' && (
+          <div className="table-wrap">
+            <table className="table">
+              <tbody>
+                <tr>
+                  <td className="bold muted">Категория</td>
+                  <td>{product.category}</td>
+                </tr>
+                <tr>
+                  <td className="bold muted">Наличие</td>
+                  <td>{inStock ? `${maxQuantity} шт.` : 'Нет в наличии'}</td>
+                </tr>
+                <tr>
+                  <td className="bold muted">Артикул (SKU)</td>
+                  <td>{sku}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'delivery' && (
+          <div className="stack">
+            <p>
+              Доставляем заказы по городу курьером — обычно в течение 1–2 часов. По России отправляем
+              транспортными компаниями, сроки и стоимость уточняются при оформлении заказа.
+            </p>
+            <p className="muted">
+              Оплатить можно онлайн картой при оформлении или наличными при получении. Для самовывоза
+              соберите заказ в корзине и выберите удобный способ получения на странице оформления.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section className="card" style={{ marginTop: 28 }}>
+        <div className="section-head" style={{ marginBottom: 24 }}>
+          <span className="eyebrow">Мнения покупателей</span>
+          <h2 style={{ fontSize: '1.7rem' }}>Отзывы ({reviews.length})</h2>
+        </div>
+
+        <form className="stack" onSubmit={handleSubmitReview}>
+          <span className="form-label">Оставить отзыв</span>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <button
+                type="button"
+                key={value}
+                className="text-button"
+                onClick={() => setNewReview((current) => ({ ...current, rating: value }))}
+                aria-label={`Оценка ${value} из 5`}
+              >
+                <Star size={24} color="var(--accent)" fill={value <= newReview.rating ? 'currentColor' : 'transparent'} />
+              </button>
+            ))}
+            <span className="muted small" style={{ marginLeft: 6 }}>{newReview.rating} из 5</span>
+          </div>
+          <textarea
+            className="textarea"
+            placeholder="Поделитесь впечатлениями о товаре…"
+            value={newReview.text}
+            onChange={(event) => setNewReview((current) => ({ ...current, text: event.target.value }))}
+            aria-label="Текст отзыва"
+          />
+          <div className="flex gap-2 wrap">
+            <button type="submit" className="btn btn-primary">
+              <MessageSquare size={17} /> Отправить отзыв
+            </button>
+            {!user && <span className="muted small">Чтобы оставить отзыв, войдите в аккаунт</span>}
+          </div>
+        </form>
+
+        <div className="divider" />
+
+        <div className="stack">
+          {reviews.map((review, index) => (
+            <div
+              className="glass-panel"
+              key={`${review.name}-${index}`}
+              style={{ padding: 18, borderLeft: '3px solid var(--accent)' }}
+            >
+              <div className="flex between gap-2 wrap">
+                <strong>{review.name}</strong>
+                <span className="rating">{'★'.repeat(review.rating)}</span>
+              </div>
+              <p className="muted" style={{ margin: '8px 0' }}>{review.text}</p>
+              <span className="tiny dim">{review.date}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {relatedLoading && <div style={{ marginTop: 56 }}><ProductGridSkeleton count={4} /></div>}
+
+      {!relatedLoading && related.length > 0 && (
+        <section style={{ marginTop: 56 }}>
+          <div className="section-head">
+            <span className="eyebrow">Из той же категории</span>
+            <h2 style={{ fontSize: '1.8rem' }}>Похожие товары</h2>
+          </div>
+          <div className="grid grid-4">
+            {related.map((item) => (
+              <ProductCard key={item.id} product={item} onQuickView={setQuickViewProduct} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <QuickView product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
+    </div>
   );
 }

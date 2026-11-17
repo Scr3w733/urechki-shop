@@ -1,10 +1,22 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import { CheckCircle, MapPin, XCircle, Wallet, Gift } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  CreditCard,
+  Gift,
+  MapPin,
+  ShieldCheck,
+  Tag,
+} from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { categoryEmoji, formatPrice } from '../utils/product';
+import EmptyState from '../components/EmptyState';
 
 const paymentMethods = [
   { id: 'card', name: 'Банковская карта', icon: '💳' },
@@ -12,101 +24,250 @@ const paymentMethods = [
   { id: 'sber', name: 'СберPay', icon: '🟢' },
   { id: 'tinkoff', name: 'Тинькофф', icon: '🟡' },
   { id: 'yoomoney', name: 'ЮMoney', icon: '🟣' },
-  { id: 'qiwi', name: 'QIWI Кошелек', icon: '🥝' },
+  { id: 'qiwi', name: 'QIWI Кошелёк', icon: '🥝' },
   { id: 'crypto', name: 'Криптовалюта', icon: '₿' },
   { id: 'applepay', name: 'Apple Pay', icon: '🍎' },
   { id: 'googlepay', name: 'Google Pay', icon: '🤖' },
   { id: 'cash', name: 'При получении', icon: '💵' },
 ];
 
+const steps = ['Данные доставки', 'Оплата', 'Подтверждение'];
+
+// Скидки совпадают с расчётом на сервере (order-service).
+const promoPercent = (code) => {
+  switch ((code || '').trim().toUpperCase()) {
+    case 'BEER5': return 0.05;
+    case 'BEER10': return 0.10;
+    case 'BEER15': return 0.15;
+    default: return 0;
+  }
+};
+
+const promoDiscountFor = (code, amount) => {
+  const upper = (code || '').trim().toUpperCase();
+  if (upper === 'CASH500') return Math.min(Number(amount) || 0, 500);
+  return (Number(amount) || 0) * promoPercent(upper);
+};
+
+function Summary({ cart, subtotal, promoLabel, promoDiscount, bonusSpent, deliveryFee, finalTotal, bonusesEarned }) {
+  return (
+    <div className="card stack">
+      <div className="flex between">
+        <h3>Ваш заказ</h3>
+        <span className="badge badge-accent">{cart.reduce((sum, item) => sum + item.quantity, 0)} шт.</span>
+      </div>
+
+      <div className="stack gap-2">
+        {cart.map((item) => (
+          <div className="flex gap-2" key={item.id}>
+            <span className="badge badge-accent" aria-hidden="true">{categoryEmoji(item.category)}</span>
+            <div className="flex between wrap gap-2" style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="bold small">{item.name}</div>
+                <div className="dim tiny">{item.quantity} шт. × {formatPrice(item.price)}</div>
+              </div>
+              <span className="small bold">{formatPrice(Number(item.price) * item.quantity)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="divider" style={{ margin: '8px 0' }} />
+
+      <div className="stack gap-2 small">
+        <div className="flex between"><span className="muted">Товары</span><span>{formatPrice(subtotal)}</span></div>
+        {promoDiscount > 0 && (
+          <div className="flex between text-accent">
+            <span>Промокод {promoLabel}</span><span>−{formatPrice(promoDiscount)}</span>
+          </div>
+        )}
+        {bonusSpent > 0 && (
+          <div className="flex between text-accent">
+            <span>Списание бонусов</span><span>−{formatPrice(bonusSpent)}</span>
+          </div>
+        )}
+        <div className="flex between">
+          <span className="muted">Доставка</span>
+          <span className={deliveryFee === 0 ? 'text-accent' : ''}>
+            {deliveryFee === 0 ? 'Бесплатно' : formatPrice(deliveryFee)}
+          </span>
+        </div>
+        <div className="flex between bold" style={{ fontSize: '1.25rem' }}>
+          <span>Итого</span><span className="text-accent">{formatPrice(finalTotal)}</span>
+        </div>
+        <p className="dim tiny" style={{ marginTop: 2 }}>
+          Итоговая сумма и скидки подтверждаются сервером при оплате.
+        </p>
+        {bonusesEarned > 0 && (
+          <div className="flex between tiny" style={{ color: 'var(--success)' }}>
+            <span>Начислим бонусов</span><span>+{formatPrice(bonusesEarned)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Checkout() {
-  const { cart, getTotal, clearCart } = useCart();
-  const { user, addOrderToHistory, getUserBonusBalance, getUserPromos, removePromoFromUser } = useAuth();
+  const { cart, getTotal, removeFromCart } = useCart();
+  const {
+    user,
+    addOrderToHistory,
+    getUserBonusBalance,
+    getUserPromos,
+    removePromoFromUser,
+  } = useAuth();
 
   const [step, setStep] = useState(1);
-  const [address, setAddress] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [orderError, setOrderError] = useState(null);
-  const [orderId, setOrderId] = useState(null);
+  const [delivery, setDelivery] = useState({ name: '', phone: '', address: '' });
+  const [errors, setErrors] = useState({});
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0]);
-
+  const [selectedPromo, setSelectedPromo] = useState('');
   const [useBonuses, setUseBonuses] = useState(false);
-  const [selectedPromo, setSelectedPromo] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const [result, setResult] = useState(null);
 
-  const total = getTotal();
-  const delivery = total > 0 && total < 2000 ? 300 : 0;
-  const totalBonusAvailable = getUserBonusBalance();
-  
-  let promoDiscount = 0;
-  let appliedPromoName = "";
-  if (selectedPromo) {
-    const promo = getUserPromos().find(p => p.promoCode === selectedPromo);
-    if (promo) {
-      appliedPromoName = promo.prize;
-      if (promo.promoCode.includes('5')) promoDiscount = total * 0.05;
-      else if (promo.promoCode.includes('10')) promoDiscount = total * 0.10;
-      else if (promo.promoCode.includes('15')) promoDiscount = total * 0.15;
+  const subtotal = getTotal();
+  const promos = getUserPromos() || [];
+  const selectedPromoData = promos.find((p) => p.promoCode === selectedPromo);
+  const promoLabel = selectedPromoData?.promoCode || '';
+  const promoDiscount = promoDiscountFor(selectedPromo, subtotal);
+  const freeDelivery = (selectedPromo || '').trim().toUpperCase() === 'FREEDEL';
+  const deliveryFee = subtotal > 0 && subtotal < 2000 && !freeDelivery ? 300 : 0;
+
+  const bonusAvailable = Math.max(0, Number(getUserBonusBalance()) || 0);
+  const maxBonus = Math.max(0, Math.min(bonusAvailable, Math.floor((subtotal - promoDiscount) * 0.5)));
+  const bonusSpent = useBonuses ? maxBonus : 0;
+  const finalTotal = Math.max(0, subtotal - promoDiscount - bonusSpent + deliveryFee);
+  const bonusesEarned = Math.floor(finalTotal * 0.1);
+
+  const setDeliveryField = (key) => (event) => {
+    setDelivery((prev) => ({ ...prev, [key]: event.target.value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+    setOrderError('');
+  };
+
+  const validateDelivery = () => {
+    const nextErrors = {};
+    const name = delivery.name.trim();
+    const phoneDigits = delivery.phone.replace(/\D/g, '');
+    const address = delivery.address.trim();
+
+    if (name.length < 2) nextErrors.name = 'Укажите имя (минимум 2 символа)';
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      nextErrors.phone = 'Введите корректный номер телефона';
     }
-  }
+    if (address.length < 5) nextErrors.address = 'Укажите город, улицу, дом и квартиру';
 
-  let bonusDiscount = 0;
-  if (useBonuses) {
-    const maxBonus = total * 0.5;
-    bonusDiscount = Math.min(totalBonusAvailable, maxBonus);
-  }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
-  const finalTotal = Math.max(0, total - promoDiscount - bonusDiscount + delivery);
-  const bonusesEarned = finalTotal * 0.1; 
+  const goToPayment = () => {
+    if (validateDelivery()) {
+      setOrderError('');
+      setStep(2);
+    }
+  };
 
   const handlePay = async () => {
     if (!user) {
-      setOrderError("Вы должны войти в аккаунт, чтобы оформить заказ!");
+      setOrderError('Войдите в аккаунт через шапку сайта, чтобы оформить заказ.');
+      return;
+    }
+    if (cart.length === 0) {
+      setOrderError('Корзина пуста. Добавьте товары перед оформлением.');
       return;
     }
 
     setIsProcessing(true);
-    setOrderError(null);
+    setOrderError('');
+
+    // Сервер считает цену сам, но бонусы распределяем по позициям заранее,
+    // чтобы не списывать одну и ту же сумму по несколько раз.
+    const weights = cart.map((item) => {
+      const base = Number(item.price) * item.quantity;
+      return Math.max(0, base - promoDiscountFor(selectedPromo, base));
+    });
+    const weightSum = weights.reduce((sum, value) => sum + value, 0) || 1;
+    let bonusLeft = bonusSpent;
+    const perItemBonus = weights.map((weight, index) => {
+      if (index === weights.length - 1) return bonusLeft;
+      const share = Math.min(bonusLeft, Math.round(bonusSpent * weight / weightSum));
+      bonusLeft -= share;
+      return share;
+    });
 
     try {
-      // Каждый товар корзины оформляется отдельным заказом:
-      // серверная модель Order хранит только один productId.
-      const responses = await Promise.all(cart.map(item => axios.post('/api/orders', {
+      const responses = await Promise.allSettled(cart.map((item, index) => axios.post('/api/orders', {
         customerId: user.id,
         productId: item.id,
         quantity: item.quantity,
-        finalPrice: total > 0 ? finalTotal * (item.price * item.quantity) / total : 0,
+        paymentMethod: selectedMethod.name,
+        promoCode: selectedPromo || undefined,
+        bonusSpent: perItemBonus[index] || 0,
       })));
 
-      const newOrderId = responses[0].data.id || Math.floor(Math.random() * 10000);
-      setOrderId(newOrderId);
-      
-      // Если использовали промокод - удаляем его из профиля
-      if (selectedPromo) {
-        removePromoFromUser(selectedPromo);
-      }
-      
-      addOrderToHistory({
-        id: newOrderId,
-        date: new Date().toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        items: cart.map(i => `${i.name} (${i.quantity} шт.)`).join(', '),
-        originalTotal: total,
-        appliedPromo: appliedPromoName,
-        promoDiscount: promoDiscount,
-        bonusDiscount: bonusDiscount,
-        delivery: delivery,
-        finalTotal: finalTotal,
-        bonusesEarned: bonusesEarned,
-        bonusesSpent: bonusDiscount,
-        status: 'Принят', // Начальный статус для трекинга
-        method: selectedMethod.name
+      const succeeded = [];
+      const failed = [];
+
+      responses.forEach((response, index) => {
+        const item = cart[index];
+        const order = response.status === 'fulfilled' ? response.value?.data : null;
+
+        if (order && order.id != null) {
+          succeeded.push({ item, order, bonus: perItemBonus[index] || 0 });
+        } else {
+          const reason = response.status === 'rejected'
+            ? (response.reason?.response?.data?.message || response.reason?.message || 'Ошибка соединения с сервером')
+            : 'Сервер не вернул номер заказа';
+          failed.push({ item, reason });
+        }
       });
 
-      setStep(3);
-      setTimeout(() => { clearCart(); }, 500); 
-    } catch (error) {
-      console.error("Ошибка при оплате", error);
-      const msg = error.response?.data?.message || "Ошибка соединения с сервером";
-      setOrderError(msg);
+      // Сохраняем в локальную историю только реально созданные заказы.
+      succeeded.forEach(({ item, order, bonus }, index) => {
+        const itemBase = Number(item.price) * item.quantity;
+        const paid = Number(order.finalPrice) || 0;
+        addOrderToHistory({
+          id: order.id,
+          date: new Date().toLocaleString('ru-RU', {
+            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          }),
+          items: `${item.name} (${item.quantity} шт.)`,
+          productId: item.id,
+          quantity: item.quantity,
+          originalTotal: itemBase,
+          appliedPromo: promoLabel,
+          promoDiscount: promoDiscountFor(selectedPromo, itemBase),
+          bonusDiscount: bonus,
+          delivery: index === 0 ? deliveryFee : 0,
+          finalTotal: paid,
+          bonusesEarned: Math.floor(paid * 0.1),
+          bonusesSpent: bonus,
+          status: order.status || 'Оплачен',
+          method: order.paymentMethod || selectedMethod.name,
+          transactionId: order.transactionId,
+        });
+      });
+
+      if (succeeded.length > 0) {
+        if (selectedPromo) removePromoFromUser(selectedPromo);
+        succeeded.forEach(({ item }) => removeFromCart(item.id));
+      }
+
+      setResult({ succeeded, failed });
+
+      if (failed.length > 0 && succeeded.length === 0) {
+        setOrderError(
+          `Не удалось оформить заказ: ${failed.map((f) => `${f.item.name} — ${f.reason}`).join('; ')}`,
+        );
+      } else {
+        setStep(3);
+      }
+    } catch {
+      setOrderError('Ошибка соединения с сервером. Попробуйте ещё раз.');
     } finally {
       setIsProcessing(false);
     }
@@ -114,114 +275,294 @@ export default function Checkout() {
 
   if (cart.length === 0 && step !== 3) {
     return (
-      <div style={{ padding: '150px 10%', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '3rem', color: '#fff', marginBottom: '20px' }}>Корзина пуста</h1>
-        <Link to="/catalog"><button style={{ background: '#d4af37', color: '#000', padding: '15px 30px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.2rem', cursor: 'pointer' }}>Перейти в каталог</button></Link>
+      <div className="container section">
+        <EmptyState
+          title="Корзина пуста"
+          description="Добавьте товары из каталога, чтобы оформить заказ."
+          action={(
+            <Link to="/catalog" className="btn btn-primary btn-lg">Перейти в каталог</Link>
+          )}
+        />
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 'clamp(20px, 5vw, 80px) 5%', maxWidth: '800px', margin: '0 auto', minHeight: '80vh' }}>
-      <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#d4af37', textAlign: 'center', marginBottom: '50px' }}>Оформление заказа</h1>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '50px', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '20px', left: '10%', right: '10%', height: '2px', background: '#333', zIndex: 1 }}></div>
-        <div style={{ position: 'absolute', top: '20px', left: '10%', width: `${(step - 1) * 40}%`, height: '2px', background: '#d4af37', zIndex: 1, transition: '0.3s' }}></div>
-        {[1, 2, 3].map(num => (
-          <div key={num} style={{ zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: step >= num ? '#d4af37' : '#1a1a1a', color: step >= num ? '#000' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', border: '2px solid', borderColor: step >= num ? '#d4af37' : '#333' }}>
-              {num === 3 && step === 3 ? <CheckCircle size={24} /> : num}
-            </div>
-            <span style={{ color: step >= num ? '#fff' : '#666', fontSize: '0.9rem' }}>{num === 1 ? 'Доставка' : num === 2 ? 'Оплата' : 'Готово'}</span>
-          </div>
+    <div className="container section">
+      <div className="section-head text-center">
+        <span className="eyebrow">Оформление заказа</span>
+        <h2>Почти у вас дома</h2>
+        <p>Три коротких шага — и отличное пиво будет в пути.</p>
+      </div>
+
+      <div className="flex wrap gap-2" role="list" aria-label="Этапы оформления" style={{ marginBottom: 24 }}>
+        {steps.map((label, index) => (
+          <span
+            key={label}
+            role="listitem"
+            className={`chip ${step >= index + 1 ? 'chip-active' : ''}`}
+            aria-current={step === index + 1 ? 'step' : undefined}
+          >
+            {index + 1}. {label}
+          </span>
         ))}
       </div>
 
-      <div className="glass-panel" style={{ padding: 'clamp(20px, 4vw, 40px)', position: 'relative', overflow: 'hidden' }}>
-        <AnimatePresence mode="wait">
-          
-          {step === 1 && (
-            <motion.div key="step1" initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }}>
-              <h2 style={{ color: '#fff', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px' }}><MapPin color="#d4af37"/> Куда доставить?</h2>
-              <input type="text" placeholder="Город, улица, дом, квартира" value={address} onChange={e => setAddress(e.target.value)} style={{ width: '100%', padding: '15px', background: '#111', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontSize: '1.1rem', marginBottom: '30px', outline: 'none' }} />
-              <button onClick={() => setStep(2)} disabled={!address} style={{ width: '100%', padding: '15px', background: address ? '#d4af37' : '#333', color: address ? '#000' : '#888', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: address ? 'pointer' : 'not-allowed' }}>Продолжить</button>
-            </motion.div>
-          )}
+      <AnimatePresence mode="wait">
+        {step !== 3 && (
+          <motion.div
+            key={`form-${step}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22 }}
+            className="grid grid-2"
+          >
+            <div className="card stack">
+              {step === 1 && (
+                <>
+                  <div className="flex gap-2">
+                    <MapPin className="text-accent" size={22} />
+                    <h3>Данные доставки</h3>
+                  </div>
+                  <p className="small muted">
+                    Эти данные нужны курьеру и для подтверждения заказа.
+                  </p>
 
-          {step === 2 && (
-            <motion.div key="step2" initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }}>
-              <h2 style={{ color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}><Wallet color="#d4af37"/> Способ оплаты</h2>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px', marginBottom: '30px' }}>
-                {paymentMethods.map(method => (
-                  <motion.div key={method.id} onClick={() => setSelectedMethod(method)} whileHover={{ scale: 1.02 }} style={{ background: selectedMethod.id === method.id ? 'rgba(212,175,55,0.2)' : '#111', border: `1px solid ${selectedMethod.id === method.id ? '#d4af37' : '#333'}`, padding: '15px 5px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ fontSize: '1.5rem' }}>{method.icon}</span>
-                    <span style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>{method.name}</span>
-                  </motion.div>
-                ))}
-              </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="checkout-name">Ваше имя</label>
+                    <input
+                      id="checkout-name"
+                      className="input"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Иван"
+                      value={delivery.name}
+                      onChange={setDeliveryField('name')}
+                      aria-invalid={Boolean(errors.name)}
+                    />
+                    {errors.name && <span className="form-error" role="alert">{errors.name}</span>}
+                  </div>
 
-              <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #333' }}>
-                <h3 style={{ color: '#d4af37', marginBottom: '15px', fontSize: '1.1rem' }}>Скидки и бонусы</h3>
-                
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ color: '#ccc', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}><Gift size={16}/> Применить промокод:</label>
-                  <select value={selectedPromo} onChange={(e) => setSelectedPromo(e.target.value)} style={{ width: '100%', padding: '10px', background: '#222', color: '#fff', border: '1px solid #444', borderRadius: '5px', outline: 'none' }}>
-                    <option value="">-- Без промокода --</option>
-                    {getUserPromos().map((p, i) => (
-                      <option key={i} value={p.promoCode}>{p.prize} ({p.promoCode})</option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="checkout-phone">Телефон</label>
+                    <input
+                      id="checkout-phone"
+                      className="input"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+7 (999) 123-45-67"
+                      value={delivery.phone}
+                      onChange={setDeliveryField('phone')}
+                      aria-invalid={Boolean(errors.phone)}
+                    />
+                    {errors.phone && <span className="form-error" role="alert">{errors.phone}</span>}
+                  </div>
 
-                <div>
-                  <label style={{ color: '#ccc', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={useBonuses} onChange={(e) => setUseBonuses(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#d4af37' }} />
-                    Списать бонусы (Доступно: {totalBonusAvailable.toFixed(0)} ₽, макс. 50%)
-                  </label>
-                </div>
-              </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="checkout-address">Адрес доставки</label>
+                    <input
+                      id="checkout-address"
+                      className="input"
+                      type="text"
+                      autoComplete="street-address"
+                      placeholder="Город, улица, дом, квартира"
+                      value={delivery.address}
+                      onChange={setDeliveryField('address')}
+                      aria-invalid={Boolean(errors.address)}
+                    />
+                    {errors.address && <span className="form-error" role="alert">{errors.address}</span>}
+                  </div>
 
-              {orderError && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid #ff4444', padding: '15px', borderRadius: '8px', color: '#ff4444', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <XCircle size={20} /> {orderError}
-                </motion.div>
+                  <button type="button" className="btn btn-primary btn-lg btn-block" onClick={goToPayment}>
+                    Продолжить <ArrowRight size={18} />
+                  </button>
+                </>
               )}
-              
-              <div style={{ borderTop: '1px solid #333', paddingTop: '20px', marginBottom: '30px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', marginBottom: '10px' }}><span>Товары:</span><span>{total} ₽</span></div>
-                {promoDiscount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: '#44ff44', marginBottom: '10px' }}><span>Скидка по промокоду:</span><span>-{promoDiscount.toFixed(0)} ₽</span></div>}
-                {bonusDiscount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: '#44ff44', marginBottom: '10px' }}><span>Списание бонусов:</span><span>-{bonusDiscount.toFixed(0)} ₽</span></div>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', marginBottom: '10px' }}><span>Доставка:</span><span>{delivery === 0 ? 'Бесплатно' : `${delivery} ₽`}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d4af37', fontSize: '1.5rem', fontWeight: 'bold' }}><span>Итого:</span><span>{finalTotal.toFixed(0)} ₽</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#44ff44', marginTop: '10px', fontSize: '0.9rem' }}><span>Будет начислено бонусов:</span><span>+{bonusesEarned.toFixed(0)} ₽</span></div>
-              </div>
 
-              <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                <button onClick={() => setStep(1)} disabled={isProcessing} style={{ flex: 1, minWidth: '100px', padding: '15px', background: 'transparent', border: '1px solid #888', color: '#888', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Назад</button>
-                <button onClick={handlePay} disabled={isProcessing} style={{ flex: 2, minWidth: '200px', padding: '15px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: isProcessing ? 'not-allowed' : 'pointer' }}>
-                  {isProcessing ? 'ОБРАБОТКА...' : `Оплатить ${finalTotal.toFixed(0)} ₽`}
+              {step === 2 && (
+                <>
+                  <div className="flex gap-2">
+                    <CreditCard className="text-accent" size={22} />
+                    <h3>Способ оплаты</h3>
+                  </div>
+
+                  <div className="grid grid-4 gap-2">
+                    {paymentMethods.map((method) => {
+                      const active = selectedMethod.id === method.id;
+                      return (
+                        <button
+                          type="button"
+                          key={method.id}
+                          className={`card card-hover ${active ? 'badge-accent' : ''}`}
+                          onClick={() => setSelectedMethod(method)}
+                          aria-pressed={active}
+                          style={{ padding: 14, minHeight: 92 }}
+                        >
+                          <span className="stack center text-center" style={{ gap: 6 }}>
+                            <span style={{ fontSize: '1.45rem' }} aria-hidden="true">{method.icon}</span>
+                            <span className="small bold">{method.name}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="divider" style={{ margin: '4px 0' }} />
+
+                  <div className="flex gap-2">
+                    <Tag className="text-accent" size={20} />
+                    <h3>Скидки и бонусы</h3>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="checkout-promo">Промокод</label>
+                    <select
+                      id="checkout-promo"
+                      className="select"
+                      value={selectedPromo}
+                      onChange={(event) => setSelectedPromo(event.target.value)}
+                    >
+                      <option value="">Без промокода</option>
+                      {promos.map((promo, index) => (
+                        <option key={`${promo.promoCode}-${index}`} value={promo.promoCode}>
+                          {promo.prize} · {promo.promoCode}
+                        </option>
+                      ))}
+                    </select>
+                    {promoDiscount > 0 && (
+                      <span className="badge badge-success" style={{ alignSelf: 'flex-start' }}>
+                        Скидка {formatPrice(promoDiscount)}
+                      </span>
+                    )}
+                  </div>
+
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={useBonuses}
+                      onChange={(event) => setUseBonuses(event.target.checked)}
+                      disabled={maxBonus <= 0}
+                    />
+                    <span>
+                      Списать бонусы: доступно {formatPrice(bonusAvailable)}, к списанию {formatPrice(maxBonus)} (не более 50%)
+                    </span>
+                  </label>
+
+                  {!user && (
+                    <div className="card" role="alert" style={{ borderColor: 'var(--danger)' }}>
+                      <span className="form-error">
+                        Войдите в аккаунт через шапку сайта, чтобы оформить заказ.
+                      </span>
+                    </div>
+                  )}
+
+                  {orderError && (
+                    <div className="card" role="alert" style={{ borderColor: 'var(--danger)' }}>
+                      <div className="flex gap-2">
+                        <AlertCircle size={18} color="var(--danger)" />
+                        <span className="form-error">{orderError}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => setStep(1)}
+                      disabled={isProcessing}
+                    >
+                      <ArrowLeft size={18} /> Назад
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handlePay}
+                      disabled={isProcessing || !user}
+                      style={{ flex: '1 1 220px' }}
+                    >
+                      {isProcessing ? (
+                        <><span className="spinner" /> Обрабатываем…</>
+                      ) : (
+                        <><ShieldCheck size={18} /> Оплатить {formatPrice(finalTotal)}</>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="stack">
+              <Summary
+                cart={cart}
+                subtotal={subtotal}
+                promoLabel={promoLabel}
+                promoDiscount={promoDiscount}
+                bonusSpent={bonusSpent}
+                deliveryFee={deliveryFee}
+                finalTotal={finalTotal}
+                bonusesEarned={bonusesEarned}
+              />
+              <div className="card">
+                <div className="flex gap-2 muted small">
+                  <Gift size={18} className="text-accent" />
+                  <span>Бонусы начисляются после успешной оплаты заказа.</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 3 && result && (
+          <motion.div
+            key="done"
+            className="card text-center stack"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.28 }}
+          >
+            <CheckCircle2 size={72} className="text-accent" style={{ margin: '0 auto' }} />
+            <h2>{result.failed.length === 0 ? 'Заказ оформлен!' : 'Часть заказа оформлена'}</h2>
+
+            <p className="muted">
+              {result.failed.length === 0
+                ? 'Спасибо! Все позиции оплачены, мы уже собираем ваш заказ.'
+                : 'Удалось оформить не все позиции. Остальные товары остались в корзине — их можно повторить.'}
+            </p>
+
+            {result.succeeded.length > 0 && (
+              <div className="badge badge-success" style={{ alignSelf: 'center', flexWrap: 'wrap' }}>
+                Номера заказов: {result.succeeded.map(({ order }) => `#${order.id}`).join(', ')}
+              </div>
+            )}
+
+            {result.failed.length > 0 && (
+              <div className="card" style={{ borderColor: 'var(--danger)', textAlign: 'left' }}>
+                <h3 className="form-error" style={{ marginBottom: 10 }}>Не оформленные позиции</h3>
+                <ul className="stack gap-2 small">
+                  {result.failed.map(({ item, reason }) => (
+                    <li key={item.id}>
+                      <span className="bold">{item.name}</span>
+                      <span className="muted"> — {reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex wrap gap-2 center">
+              <Link to="/profile" className="btn btn-primary btn-lg">В личный кабинет</Link>
+              {result.failed.length > 0 && (
+                <button type="button" className="btn btn-outline btn-lg" onClick={() => { setResult(null); setStep(2); }}>
+                  Повторить оформление
                 </button>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 3 && (
-            <motion.div key="step3" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ textAlign: 'center', padding: '20px 0' }}>
-              <motion.div animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.2, 1] }} transition={{ duration: 0.5 }}>
-                <CheckCircle size={80} color="#44ff44" style={{ margin: '0 auto 20px' }} />
-              </motion.div>
-              <h2 style={{ color: '#fff', fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', marginBottom: '15px' }}>Заказ оформлен!</h2>
-              <p style={{ color: '#aaa', fontSize: '1.1rem', marginBottom: '30px' }}>Номер заказа: <span style={{ color: '#d4af37', fontWeight: 'bold' }}>#{orderId}</span>.</p>
-              <Link to="/profile">
-                <button style={{ background: '#d4af37', color: '#000', padding: '15px 40px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}>В личный кабинет</button>
-              </Link>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
-      </div>
+              )}
+              <Link to="/catalog" className="btn btn-ghost btn-lg">В каталог</Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

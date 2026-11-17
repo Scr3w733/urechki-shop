@@ -1,44 +1,92 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Paintbrush } from 'lucide-react';
+import { Check, MousePointer2, Palette, Sparkles } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import Modal from './Modal';
 
 export default function SettingsModal({ isOpen, onClose }) {
-  const { theme, setTheme, THEMES } = useTheme();
+  const { theme, setTheme, THEMES, cursorStyle, setCursorStyle, CURSORS } = useTheme();
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, backdropFilter: 'blur(10px)' }} onClick={onClose}>
-          <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }} onClick={e => e.stopPropagation()} className="glass-panel" style={{ padding: '40px', width: '90%', maxWidth: '450px', position: 'relative' }}>
-            <X onClick={onClose} style={{ position: 'absolute', top: '20px', right: '20px', cursor: 'pointer', color: 'var(--accent)' }} />
-            
-            <h2 style={{ color: 'var(--accent)', marginBottom: '10px', fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Paintbrush /> Настройки
-            </h2>
-            <p style={{ color: '#aaa', marginBottom: '30px' }}>Настройте внешний вид сайта под себя</p>
-
-            <h3 style={{ color: '#fff', marginBottom: '15px', fontSize: '1.1rem' }}>Акцентный цвет</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              {Object.entries(THEMES).map(([key, t]) => (
-                <button 
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="Настройки"
+      footer={<button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>}
+    >
+      <div className="stack">
+        <section>
+          <h3 className="flex gap-2" style={{ fontSize: '1rem', marginBottom: 12 }}>
+            <Palette size={17} className="text-accent" aria-hidden="true" />
+            Акцентный цвет
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            {Object.entries(THEMES).map(([key, option]) => {
+              const selected = theme.color === option.color;
+              return (
+                <button
                   key={key}
-                  onClick={() => setTheme(t)}
-                  style={{ 
-                    background: t.color, 
-                    color: key === 'gold' || key === 'green' ? '#000' : '#fff', 
-                    border: theme.color === t.color ? '3px solid #fff' : '3px solid transparent',
-                    padding: '15px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                    transition: '0.2s'
-                  }}
+                  type="button"
+                  className={`btn ${selected ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setTheme(option)}
+                  aria-pressed={selected}
+                  style={{ justifyContent: 'flex-start', gap: 10 }}
                 >
-                  {theme.color === t.color && <Check size={18} />} {t.name}
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: option.color,
+                      border: '1px solid rgba(255, 255, 255, .35)',
+                    }}
+                  />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{option.name}</span>
+                  {selected && <Check size={15} style={{ marginLeft: 'auto' }} aria-hidden="true" />}
                 </button>
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="divider" style={{ margin: '2px 0' }} />
+
+        <section>
+          <h3 className="flex gap-2" style={{ fontSize: '1rem', marginBottom: 12 }}>
+            <MousePointer2 size={17} className="text-accent" aria-hidden="true" />
+            Курсор
+          </h3>
+          <div className="flex wrap gap-1">
+            {Object.entries(CURSORS).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`chip ${cursorStyle === key ? 'chip-active' : ''}`}
+                aria-pressed={cursorStyle === key}
+                onClick={() => setCursorStyle(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="tiny dim" style={{ marginTop: 10 }}>
+            При выборе «Стандартный» остаётся обычный системный курсор.
+          </p>
+        </section>
+
+        <div className="divider" style={{ margin: '2px 0' }} />
+
+        <section>
+          <h3 className="flex gap-2" style={{ fontSize: '1rem', marginBottom: 8 }}>
+            <Sparkles size={17} className="text-accent" aria-hidden="true" />
+            Уменьшение анимации
+          </h3>
+          <p className="small muted">
+            Анимации становятся короче и спокойнее автоматически, если в системе включено
+            «Уменьшить движение» (prefers-reduced-motion).
+          </p>
+        </section>
+      </div>
+    </Modal>
   );
 }

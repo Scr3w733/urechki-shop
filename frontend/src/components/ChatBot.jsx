@@ -1,103 +1,295 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Bot, MessageCircle, Send, User, X } from 'lucide-react';
 
-const quickReplies = ["Доставка", "Оплата", "Бонусы", "График работы", "Состав пива"];
+const QUICK_REPLIES = ['Доставка', 'Оплата', 'Бонусы', 'График работы', 'Состав пива'];
+
+const RULES = [
+  {
+    match: /достав|привез|курьер/i,
+    text: 'Доставка по Новосибирску занимает 1–2 часа. Бесплатно от 2 000 ₽, иначе 300 ₽. Курьеры работают с 11:00 до 23:00.',
+  },
+  {
+    match: /оплат|карт|сбп|наличн/i,
+    text: 'Принимаем банковские карты, СБП и наличные при получении. Чек приходит на почту после заказа.',
+  },
+  {
+    match: /бонус|скидк|промокод/i,
+    text: 'С каждой покупки начисляем 10% бонусами. Ими можно оплатить до 50% следующего заказа, а в Рулетке бывают промокоды.',
+  },
+  {
+    match: /график|работаете|время|экскурс/i,
+    text: 'Бары открыты ежедневно с 11:00 до 23:00. Экскурсии на заводе — по субботам в 14:00.',
+  },
+  {
+    match: /состав|ингредиент|натуральн/i,
+    text: 'Варим пиво из сибирской воды, ячменя, хмеля и дрожжей. Без порошков и концентратов.',
+  },
+  {
+    match: /мерч|футболк|худи/i,
+    text: 'В Конструкторе мерча можно выбрать цвет, принт и размер. Там же есть футболки и худи «У Речушки».',
+  },
+  {
+    match: /адрес|находит|бар/i,
+    text: 'Наши бары в Новосибирске: 2-я Воинская 53, Ленина 10, Красный проспект 50 и Кирова 27.',
+  },
+  {
+    match: /привет|здравств|добрый/i,
+    text: 'Здравствуйте! Рад вас видеть. О чём хотите узнать?',
+  },
+];
+
+function getReply(text) {
+  const rule = RULES.find((item) => item.match.test(text));
+  return rule
+    ? rule.text
+    : 'Пока не знаю точного ответа. Помогут раздел «Вопросы и ответы» (FAQ) или звонок: +7 (951) 624-01-61.';
+}
 
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([{ text: "Здравствуйте! Я нейро-помощник пивоварни 'У Речушки'. Чем могу помочь?", isBot: true }]);
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef(null);
+  const [messages, setMessages] = useState([
+    {
+      id: 0,
+      isBot: true,
+      text: 'Здравствуйте! Я помощник «У Речушки». Спросите меня о доставке, оплате, бонусах или пиве.',
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+  const timersRef = useRef([]);
+  const pendingRef = useRef(0);
+  const nextIdRef = useRef(1);
+  const reduceMotion = useReducedMotion();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (isOpen) inputRef.current?.focus();
+  }, [isOpen]);
 
-  const processMessage = (text) => {
-    const lower = text.toLowerCase();
-    
-    if (lower.includes('доставка') || lower.includes('привез')) return "Доставка по Новосибирску занимает 1-2 часа. Бесплатно от 2000 рублей. В остальных случаях — 300 рублей. Курьеры работают с 11:00 до 23:00.";
-    if (lower.includes('оплат') || lower.includes('карт') || lower.includes('сбп')) return "Мы принимаем банковские карты (Visa, MIR), СБП, наличные при получении и даже криптовалюту. Все чеки приходят на почту.";
-    if (lower.includes('бонус') || lower.includes('скидк')) return "С каждой покупки мы начисляем 10% бонусами! Ими можно оплатить до 50% следующего заказа. А еще у нас есть рулетка, где можно выиграть промокод!";
-    if (lower.includes('график') || lower.includes('работаете') || lower.includes('время')) return "Наши бары работают ежедневно с 11:00 до 23:00. Завод (экскурсии) — по субботам в 14:00.";
-    if (lower.includes('состав') || lower.includes('ингредиент')) return "Мы варим пиво только из натуральных ингредиентов: сибирская вода, отборный ячмень, хмель и дрожжи. Никаких порошков и концентратов!";
-    if (lower.includes('мерч') || lower.includes('футболк')) return "Наш мерч производится в дочерней компании в Шанхае. На сайте есть 'Конструктор', где можно выбрать цвет, принт и размер футболки!";
-    if (lower.includes('привет') || lower.includes('здравств')) return "Привет-привет! 🍻 Рад вас видеть. Что вас интересует?";
-    if (lower.includes('адрес') || lower.includes('находит')) return "У нас 4 бара в Новосибирске: ул. 2-я Воинская 53, ул. Ленина 10, Красный проспект 50, ул. Кирова 27. Приходите в гости!";
-    
-    return "Интересный вопрос! Я передал его нашему менеджеру. А пока вы можете посмотреть наш каталог или позвонить по номеру +7 (951) 624-01-61.";
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [messages, isTyping, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
+
+  const send = (rawText) => {
+    const text = rawText.trim();
+    if (!text) return;
+
+    setMessages((prev) => [...prev, { id: nextIdRef.current++, isBot: false, text }]);
+    setInput('');
+    pendingRef.current += 1;
+    setIsTyping(true);
+
+    const timer = setTimeout(() => {
+      setMessages((prev) => [...prev, { id: nextIdRef.current++, isBot: true, text: getReply(text) }]);
+      pendingRef.current -= 1;
+      setIsTyping(pendingRef.current > 0);
+    }, 600);
+    timersRef.current.push(timer);
   };
 
-  const handleSend = (text) => {
-    if (!text.trim()) return;
+  const showQuickReplies = messages.length === 1 || messages[messages.length - 1]?.isBot;
 
-    // Сообщение пользователя
-    const userMsg = { text: text, isBot: false };
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
-
-    // Имитация задержки и ответ бота
-    setTimeout(() => {
-      const botMsg = { text: processMessage(text), isBot: true };
-      setMessages(prev => [...prev, botMsg]);
-    }, 800);
-  };
+  const panelAnimation = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : {
+        initial: { opacity: 0, y: 16, scale: 0.98 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: 16, scale: 0.98 },
+      };
 
   return (
     <>
-      <motion.button 
-        onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.1, boxShadow: '0 0 20px rgba(212,175,55,0.8)' }} whileTap={{ scale: 0.9 }}
-        style={{ position: 'fixed', bottom: '30px', right: '30px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #d4af37, #ffdf00)', border: 'none', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 9999, boxShadow: '0 5px 20px rgba(0,0,0,0.5)' }}
+      <motion.button
+        type="button"
+        className="btn btn-primary"
+        onClick={() => setIsOpen((open) => !open)}
+        whileHover={reduceMotion ? undefined : { scale: 1.04 }}
+        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+        aria-label={isOpen ? 'Закрыть чат' : 'Открыть чат'}
+        aria-expanded={isOpen}
+        style={{
+          position: 'fixed',
+          right: 20,
+          bottom: 20,
+          width: 52,
+          height: 52,
+          padding: 0,
+          borderRadius: '50%',
+          zIndex: 9950,
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35)',
+        }}
       >
-        {isOpen ? <X size={30} /> : <MessageCircle size={30} />}
+        {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
       </motion.button>
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            style={{ position: 'fixed', bottom: '110px', right: '30px', width: '380px', height: '550px', background: '#0a0a0a', border: '1px solid #d4af37', borderRadius: '20px', display: 'flex', flexDirection: 'column', zIndex: 9998, overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.9)' }}
+          <motion.section
+            {...panelAnimation}
+            aria-label="Чат с помощником"
+            className="glass-panel"
+            style={{
+              position: 'fixed',
+              right: 20,
+              bottom: 84,
+              width: 'min(380px, calc(100vw - 32px))',
+              height: 'min(560px, calc(100dvh - 116px))',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              zIndex: 9949,
+            }}
           >
-            <div style={{ background: 'linear-gradient(90deg, #d4af37, #ffdf00)', padding: '20px', color: '#000', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 'bold', fontSize: '1.1rem' }}>
-              <Bot size={24} /> Нейро-помощник
-            </div>
-            
-            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {messages.map((msg, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexDirection: msg.isBot ? 'row' : 'row-reverse' }}>
-                  <div style={{ background: msg.isBot ? '#d4af37' : '#333', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {msg.isBot ? <Bot size={16} color="#000"/> : <User size={16} color="#fff"/>}
+            <header
+              className="flex between gap-2"
+              style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}
+            >
+              <div className="flex gap-2" style={{ minWidth: 0 }}>
+                <span
+                  className="flex"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 11,
+                    flexShrink: 0,
+                    background: 'rgba(var(--accent-rgb), .12)',
+                    color: 'var(--accent)',
+                  }}
+                >
+                  <Bot size={18} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="bold small" style={{ color: 'var(--text)' }}>Помощник «У Речушки»</div>
+                  <div className="tiny dim flex gap-1" style={{ alignItems: 'center' }}>
+                    <span className="status-dot" style={{ width: 6, height: 6, boxShadow: 'none' }} />
+                    Отвечает сразу
                   </div>
-                  <div style={{ background: msg.isBot ? '#1a1a1a' : '#d4af37', color: msg.isBot ? '#fff' : '#000', padding: '12px 16px', borderRadius: '15px', maxWidth: '75%', fontSize: '0.9rem', lineHeight: '1.5', borderBottomLeftRadius: msg.isBot ? 0 : '15px', borderBottomRightRadius: msg.isBot ? '15px' : 0, border: msg.isBot ? '1px solid #333' : 'none' }}>
-                    {msg.text}
+                </div>
+              </div>
+              <button type="button" className="icon-btn" style={{ width: 32, height: 32, flexShrink: 0 }} onClick={() => setIsOpen(false)} aria-label="Закрыть чат">
+                <X size={16} />
+              </button>
+            </header>
+
+            <div
+              ref={scrollRef}
+              role="log"
+              aria-live="polite"
+              aria-label="Сообщения"
+              style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}
+            >
+              {messages.map((message) => (
+                <div key={message.id} style={{ display: 'flex', justifyContent: message.isBot ? 'flex-start' : 'flex-end', alignItems: 'flex-end', gap: 8 }}>
+                  <span
+                    className="flex"
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: message.isBot ? 'rgba(var(--accent-rgb), .12)' : 'rgba(255, 255, 255, .06)',
+                      color: message.isBot ? 'var(--accent)' : 'var(--text-muted)',
+                    }}
+                    aria-hidden="true"
+                  >
+                    {message.isBot ? <Bot size={14} /> : <User size={14} />}
+                  </span>
+                  <div
+                    style={{
+                      maxWidth: '78%',
+                      padding: '10px 14px',
+                      borderRadius: 14,
+                      borderBottomLeftRadius: message.isBot ? 4 : 14,
+                      borderBottomRightRadius: message.isBot ? 14 : 4,
+                      background: message.isBot ? 'rgba(255, 255, 255, .05)' : 'var(--accent)',
+                      border: message.isBot ? '1px solid var(--border)' : 'none',
+                      color: message.isBot ? 'var(--text)' : '#111',
+                      fontSize: '0.88rem',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {message.text}
                   </div>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
+
+              {isTyping && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} aria-label="Помощник печатает">
+                  <span className="flex" style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(var(--accent-rgb), .12)', color: 'var(--accent)' }} aria-hidden="true">
+                    <Bot size={14} />
+                  </span>
+                  <span className="flex gap-1" style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(255, 255, 255, .05)', border: '1px solid var(--border)' }} aria-hidden="true">
+                    {[0, 1, 2].map((index) => (
+                      <motion.span
+                        key={index}
+                        animate={reduceMotion ? undefined : { opacity: [0.35, 1, 0.35], y: [0, -3, 0] }}
+                        transition={{ duration: 0.9, repeat: Infinity, delay: index * 0.15, ease: 'easeInOut' }}
+                        style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }}
+                      />
+                    ))}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Быстрые ответы */}
-            <div style={{ padding: '10px', display: 'flex', gap: '8px', overflowX: 'auto', background: '#111', borderTop: '1px solid #333' }}>
-              {quickReplies.map((reply, i) => (
-                <button key={i} onClick={() => handleSend(reply)} style={{ background: 'transparent', border: '1px solid #d4af37', color: '#d4af37', padding: '8px 12px', borderRadius: '20px', fontSize: '0.8rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                  {reply}
-                </button>
-              ))}
-            </div>
+            {showQuickReplies && (
+              <div
+                className="flex gap-1"
+                style={{ padding: '0 14px 10px', overflowX: 'auto', flexShrink: 0 }}
+                aria-label="Частые вопросы"
+              >
+                {QUICK_REPLIES.map((reply) => (
+                  <button
+                    key={reply}
+                    type="button"
+                    className="chip"
+                    onClick={() => send(reply)}
+                    style={{ whiteSpace: 'nowrap', padding: '7px 12px', fontSize: '0.78rem' }}
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            <form onSubmit={(e) => { e.preventDefault(); handleSend(input); }} style={{ display: 'flex', padding: '15px', borderTop: '1px solid #222', background: '#0a0a0a' }}>
-              <input type="text" placeholder="Ваш вопрос..." value={input} onChange={e => setInput(e.target.value)} style={{ flex: 1, background: '#111', border: '1px solid #333', color: '#fff', outline: 'none', padding: '12px 15px', borderRadius: '25px', fontSize: '0.9rem' }} />
-              <button type="submit" style={{ background: '#d4af37', border: 'none', color: '#000', cursor: 'pointer', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '10px' }}>
-                <Send size={20}/>
+            <form
+              className="flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                send(input);
+              }}
+              style={{ padding: 12, borderTop: '1px solid var(--border)', flexShrink: 0 }}
+            >
+              <input
+                ref={inputRef}
+                className="input"
+                type="text"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Напишите вопрос…"
+                aria-label="Ваш вопрос"
+                maxLength={300}
+                style={{ flex: 1, minWidth: 0, padding: '10px 14px', borderRadius: 999 }}
+              />
+              <button type="submit" className="btn btn-primary icon-btn" style={{ width: 42, height: 42, padding: 0, flexShrink: 0 }} aria-label="Отправить сообщение" disabled={!input.trim()}>
+                <Send size={17} />
               </button>
             </form>
-          </motion.div>
+          </motion.section>
         )}
       </AnimatePresence>
     </>

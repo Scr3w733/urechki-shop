@@ -1,136 +1,167 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone } from 'lucide-react';
+import { Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone, ChevronDown } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 import SettingsModal from './SettingsModal';
 
+const links = [
+  { to: '/', label: 'Главная', end: true },
+  { to: '/catalog', label: 'Каталог' },
+  { to: '/about', label: 'О нас' },
+  { to: '/production', label: 'Производство' },
+  { to: '/blog', label: 'Блог' },
+  { to: '/faq', label: 'FAQ' },
+];
+
 export default function Navbar() {
-  const { cart, setIsCartOpen } = useCart();
-  const { user } = useAuth();
+  const { getCount, openCart } = useCart();
+  const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Состояния для умного поиска
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [products, setProducts] = useState([]);
+  const [focused, setFocused] = useState(false);
+  const searchRef = useRef(null);
 
   useEffect(() => {
-    // Загружаем товары для поиска при старте
     fetch('/api/products')
       .then(res => res.json())
-      .then(data => setAllProducts(data))
+      .then(data => setProducts(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (searchQuery.length > 1) {
-      const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5);
-      setSearchResults(filtered);
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchQuery, allProducts]);
+    setMobileOpen(false);
+    setAccountOpen(false);
+    setFocused(false);
+  }, [location.pathname]);
 
-  const handleSearch = (e) => {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  const results = search.length > 1
+    ? products.filter(p => p.name?.toLowerCase().includes(search.toLowerCase())).slice(0, 6)
+    : [];
+
+  const submitSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/catalog?search=${searchQuery}`);
-      setSearchQuery('');
-      setSearchResults([]);
-      setIsMobileMenuOpen(false);
-    }
+    if (!search.trim()) return;
+    navigate(`/catalog?search=${encodeURIComponent(search.trim())}`);
+    setSearch('');
+    setFocused(false);
   };
 
   return (
     <>
-      <motion.nav initial={{ y: -100 }} animate={{ y: 0 }} style={{ position: 'sticky', top: 0, zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 3%', background: 'rgba(13, 13, 13, 0.95)', backdropFilter: 'blur(15px)', borderBottom: '1px solid rgba(var(--accent-rgb), 0.2)' }}>
-        
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.3rem', fontWeight: 900, color: 'var(--accent)' }}>
-          <Beer size={28} /> У РЕЧУШКИ
-        </Link>
+      <header className="site-header">
+        <div className="container nav-inner">
+          <Link to="/" className="brand" aria-label="У Речушки — на главную">
+            <span className="brand-mark"><Beer size={22} /></span>
+            <span>У РЕЧУШКИ</span>
+          </Link>
 
-        {/* УМНЫЙ ПОИСК */}
-        <div style={{ position: 'relative', width: '200px' }} className="desktop-menu">
-          <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '20px', padding: '5px 15px' }}>
-            <Search size={16} color="#888" />
-            <input type="text" placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', marginLeft: '10px', outline: 'none', width: '100%', fontSize: '0.9rem' }} />
+          <nav className="desktop-menu main-nav" aria-label="Основная навигация">
+            {links.map(link => (
+              <NavLink key={link.to} to={link.to} end={link.end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <form className="header-search desktop-menu" onSubmit={submitSearch} role="search">
+            <Search size={17} />
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setTimeout(() => setFocused(false), 160)}
+              placeholder="Найти пиво, закуски…"
+              aria-label="Поиск по каталогу"
+            />
+            <kbd>/</kbd>
+            <AnimatePresence>
+              {focused && results.length > 0 && (
+                <motion.div className="search-dropdown" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+                  {results.map(p => (
+                    <button key={p.id} type="button" onClick={() => { navigate(`/product/${p.id}`); setSearch(''); setFocused(false); }}>
+                      <span style={{ fontSize: 22 }}>{p.category === 'Пиво' ? '🍻' : '🎁'}</span>
+                      <span style={{ flex: 1, textAlign: 'left' }}>
+                        <strong style={{ display: 'block', fontSize: '.85rem' }}>{p.name}</strong>
+                        <small className="muted">{p.price} ₽</small>
+                      </span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </form>
-          
-          {/* ВЫПАДАЮЩИЕ ПОДСКАЗКИ */}
-          <AnimatePresence>
-            {searchResults.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', top: '45px', left: 0, width: '300px', background: '#151515', border: '1px solid #333', borderRadius: '10px', overflow: 'hidden', zIndex: 1000, boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
-                {searchResults.map(p => (
-                  <div key={p.id} onClick={() => { navigate(`/product/${p.id}`); setSearchQuery(''); setSearchResults([]); }} style={{ padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderBottom: '1px solid #222' }}>
-                    <div style={{ fontSize: '1.5rem' }}>{p.category === 'Пиво' ? '🍻' : '🍟'}</div>
-                    <div>
-                      <div style={{ color: '#fff', fontSize: '0.9rem' }}>{p.name}</div>
-                      <div style={{ color: 'var(--accent)', fontSize: '0.8rem' }}>{p.price} ₽</div>
-                    </div>
-                  </div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '20px', fontWeight: 700, alignItems: 'center', fontSize: '0.85rem' }} className="desktop-menu">
-          <Link to="/" className="nav-link">Главная</Link>
-          <Link to="/catalog" className="nav-link">Каталог</Link>
-          <Link to="/blog" className="nav-link">Блог</Link>
-          <Link to="/faq" className="nav-link">FAQ</Link>
-          <Link to="/roulette" className="nav-link" style={{ color: '#ff4444' }}>Рулетка</Link>
-          <Link to="/app" className="nav-link" style={{ color: 'var(--accent)' }}>Приложение</Link>
-        </div>
 
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-            {/* ВОЗВРАЩЕННАЯ ШЕСТЕРЕНКА НАСТРОЕК */}
-            <motion.div onClick={() => setIsSettingsOpen(true)} whileHover={{ scale: 1.1, rotate: 90 }} style={{ cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', background: 'rgba(212,175,55,0.1)', padding: '8px', borderRadius: '50%' }}>
-              <Settings size={22} />
-            </motion.div>
+          <div className="nav-actions">
+            <button className="icon-btn desktop-menu" onClick={() => setIsSettingsOpen(true)} title="Настройки" aria-label="Настройки">
+              <Settings size={19} />
+            </button>
 
             {user ? (
-              <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent)', background: 'rgba(var(--accent-rgb), 0.1)', padding: '8px 15px', borderRadius: '20px', border: '1px solid var(--accent)' }}>
-                <User size={18} /> <span className="hide-mobile">{user.name}</span>
-              </Link>
+              <div className="account-wrap">
+                <button className="account-button" onClick={() => setAccountOpen(v => !v)} aria-expanded={accountOpen}>
+                  <span className="avatar">{(user.name || 'У').charAt(0).toUpperCase()}</span>
+                  <span className="hide-mobile">{user.name || 'Профиль'}</span>
+                  <ChevronDown size={14} />
+                </button>
+                <AnimatePresence>
+                  {accountOpen && (
+                    <motion.div className="account-menu" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+                      <Link to="/profile"><User size={16} /> Мой профиль</Link>
+                      {isAdmin && <Link to="/admin"><Settings size={16} /> Админка</Link>}
+                      <Link to="/app"><Smartphone size={16} /> Приложение</Link>
+                      <button onClick={() => { logout(); setAccountOpen(false); }}>Выйти</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             ) : (
-              <motion.button onClick={() => setIsAuthOpen(true)} whileHover={{ scale: 1.05 }} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 15px', borderRadius: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-                <User size={18} /> <span className="hide-mobile">Войти</span>
-              </motion.button>
+              <button className="btn btn-outline btn-sm" onClick={() => setIsAuthOpen(true)}>
+                <User size={17} /> <span className="hide-mobile">Войти</span>
+              </button>
             )}
 
-            <motion.div onClick={() => setIsCartOpen(true)} whileHover={{ scale: 1.1 }} style={{ cursor: 'pointer', color: 'var(--accent)', position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <ShoppingCart size={24} />
-              {cart.length > 0 && (
-                <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ff4444', color: '#fff', fontSize: '0.7rem', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                  {cart.reduce((acc, item) => acc + item.quantity, 0)}
-                </span>
-              )}
-            </motion.div>
-            
-            <div className="mobile-burger" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={{ display: 'none', color: 'var(--accent)', cursor: 'pointer' }}>
-              {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-            </div>
-        </div>
-      </motion.nav>
+            <button className="icon-btn cart-button" onClick={openCart} title="Корзина" aria-label="Открыть корзину">
+              <ShoppingCart size={20} />
+              {getCount() > 0 && <span className="cart-count">{getCount()}</span>}
+            </button>
 
-      {/* МОБИЛЬНОЕ МЕНЮ */}
+            <button className="icon-btn mobile-burger" onClick={() => setMobileOpen(v => !v)} aria-label="Открыть меню">
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+        </div>
+      </header>
+
       <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ background: '#0a0a0a', overflow: 'hidden', borderBottom: '1px solid var(--accent)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', padding: '20px', gap: '15px' }}>
-              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="nav-link">Главная</Link>
-              <Link to="/catalog" onClick={() => setIsMobileMenuOpen(false)} className="nav-link">Каталог</Link>
-              <Link to="/app" onClick={() => setIsMobileMenuOpen(false)} className="nav-link">Приложение</Link>
-              <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)} className="nav-link">Блог</Link>
-              <Link to="/roulette" onClick={() => setIsMobileMenuOpen(false)} className="nav-link">Рулетка</Link>
-              <button onClick={() => { setIsMobileMenuOpen(false); setIsSettingsOpen(true); }} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '10px', borderRadius: '8px', fontWeight: 'bold' }}>Настройки</button>
+        {mobileOpen && (
+          <motion.div className="mobile-menu" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+            <div className="container stack" style={{ padding: '18px 0' }}>
+              {[...links, { to: '/roulette', label: 'Рулетка' }, { to: '/merch', label: 'Мерч' }, { to: '/app', label: 'Приложение' }, { to: '/reviews', label: 'Отзывы' }, { to: '/contacts', label: 'Контакты' }].map(link => (
+                <Link key={link.to} to={link.to} className="nav-link">{link.label}</Link>
+              ))}
+              {isAdmin && <Link to="/admin" className="nav-link text-accent">Админка</Link>}
+              <button className="btn btn-outline" onClick={() => { setMobileOpen(false); setIsSettingsOpen(true); }}><Settings size={17} /> Настройки</button>
             </div>
           </motion.div>
         )}
@@ -138,14 +169,6 @@ export default function Navbar() {
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-
-      <style>{`
-        @media (max-width: 1024px) {
-          .desktop-menu { display: none !important; }
-          .mobile-burger { display: block !important; }
-          .hide-mobile { display: none !important; }
-        }
-      `}</style>
     </>
   );
 }

@@ -1,76 +1,111 @@
-import { motion } from 'framer-motion';
-import { QrCode, Smartphone, Star, CheckCircle, Apple, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, Bell, CheckCircle, ShoppingBag, Smartphone, Sparkles, Star } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+
+const features = [
+  { icon: ShoppingBag, title: 'Быстрый заказ', desc: 'Избранные товары и последний заказ всегда под рукой.' },
+  { icon: Star, title: 'Персональные предложения', desc: 'Скидки и промокоды, подобранные под ваши покупки.' },
+  { icon: Bell, title: 'Уведомления', desc: 'Сообщим о новых сортах и статусе доставки.' },
+];
+
+const screens = [
+  { label: 'Главная', blocks: [92, 14, 14, 38] },
+  { label: 'Каталог', blocks: [56, 56, 56, 20] },
+  { label: 'Заказ', blocks: [74, 14, 14, 36] },
+];
 
 export default function AppPage() {
+  const { addNotification } = useNotification();
+
+  const notifyMe = () => {
+    addNotification('Спасибо! Сообщим, когда приложение будет доступно', 'success');
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ minHeight: '80vh', background: '#0a0a0a' }}>
-      
-      {/* HERO СЕКЦИЯ */}
-      <section style={{ padding: '100px 5%', textAlign: 'center', background: 'linear-gradient(180deg, #111 0%, #0a0a0a 100%)' }}>
-        <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-          <div style={{ display: 'inline-block', background: 'rgba(212,175,55,0.1)', border: '1px solid var(--accent)', padding: '8px 20px', borderRadius: '30px', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '20px' }}>
-            🚀 Скоро в App Store и Google Play
-          </div>
-          <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', color: '#fff', fontWeight: 900, lineHeight: 1.1, marginBottom: '20px' }}>
-            Весь магазин <br/><span style={{ color: 'var(--accent)' }}>в твоем кармане</span>
-          </h1>
-          <p style={{ fontSize: '1.2rem', color: '#aaa', maxWidth: '600px', margin: '0 auto 40px' }}>
-            Заказывай пиво и закуски в один клик, получай эксклюзивные скидки и следи за статусом заказа в реальном времени.
-          </p>
-
-          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '60px' }}>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#000', color: '#fff', border: '1px solid #333', padding: '15px 30px', borderRadius: '15px', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 'bold' }}>
-              <Apple size={28} /> Скачать для iOS
-            </button>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#000', color: '#fff', border: '1px solid #333', padding: '15px 30px', borderRadius: '15px', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 'bold' }}>
-              <Play size={28} /> Скачать для Android
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '15px' }}>
-              <QrCode size={100} color="#000" />
-            </div>
-            <div style={{ textAlign: 'left' }}>
-              <p style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '5px' }}>Наведи камеру телефона</p>
-              <p style={{ color: '#888' }}>чтобы скачать приложение прямо сейчас</p>
-            </div>
-          </div>
-        </motion.div>
+    <div className="fade-in">
+      {/* HERO */}
+      <section className="section container" style={{ textAlign: 'center' }}>
+        <span className="eyebrow" style={{ justifyContent: 'center' }}><Smartphone size={14} /> Приложение в разработке</span>
+        <h1 style={{ maxWidth: 760, margin: '0 auto 20px' }}>
+          Весь магазин <span className="text-accent">в вашем кармане</span>
+        </h1>
+        <p className="muted" style={{ maxWidth: 620, margin: '0 auto 32px' }}>
+          Готовим приложение «У Речушки»: заказ в пару касаний, история покупок и персональные
+          предложения. Пока оно в разработке — заглядывайте в магазин через сайт.
+        </p>
+        <span className="badge badge-accent"><Sparkles size={14} /> Скоро</span>
+        <div className="flex gap-2 wrap center" style={{ marginTop: 28 }}>
+          <button className="btn btn-primary btn-lg" onClick={notifyMe}><Bell size={18} /> Сообщить о запуске</button>
+          <Link to="/catalog" className="btn btn-outline btn-lg">Пока в каталог <ArrowRight size={18} /></Link>
+        </div>
       </section>
 
-      {/* ПРЕИМУЩЕСТВА */}
-      <section style={{ padding: '80px 5%', maxWidth: '1000px', margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '30px' }}>
-          {[
-            { icon: <Smartphone size={40} color="var(--accent)" />, title: "Мгновенный заказ", desc: "Оформить заказ за 10 секунд, не вводя адрес каждый раз." },
-            { icon: <Star size={40} color="var(--accent)" />, title: "Эксклюзивные скидки", desc: "Только в приложении доступны скрытые акции и промокоды." },
-            { icon: <CheckCircle size={40} color="var(--accent)" />, title: "Push-уведомления", desc: "Узнавай о новых сортах пива первым." }
-          ].map((item, i) => (
-            <motion.div key={i} initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="glass-panel" style={{ padding: '30px', textAlign: 'center' }}>
-              <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
-              <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '10px' }}>{item.title}</h3>
-              <p style={{ color: '#aaa', fontSize: '0.95rem' }}>{item.desc}</p>
-            </motion.div>
+      {/* SCREENSHOT PLACEHOLDERS */}
+      <section className="section-sm container">
+        <div className="section-head center">
+          <span className="eyebrow">Предпросмотр</span>
+          <h2>Как это будет выглядеть</h2>
+          <p className="small">Заглушки экранов — дизайн ещё дорабатывается.</p>
+        </div>
+        <div className="grid grid-3" style={{ justifyItems: 'center' }}>
+          {screens.map(screen => (
+            <div key={screen.label} className="stack" style={{ alignItems: 'center', gap: 12 }}>
+              <div
+                aria-label={`Экран: ${screen.label}`}
+                style={{
+                  width: 180,
+                  padding: 10,
+                  borderRadius: 28,
+                  border: '2px solid var(--border-accent)',
+                  background: '#0d0d10',
+                  boxShadow: 'var(--shadow)',
+                }}
+              >
+                <div className="stack" style={{ height: 320, padding: 14, borderRadius: 20, background: 'linear-gradient(160deg, rgba(var(--accent-rgb), .12), transparent 60%)' }}>
+                  <span className="badge badge-accent" style={{ alignSelf: 'flex-start' }}>URECHKI</span>
+                  {screen.blocks.map((height, i) => (
+                    <div key={i} className="skeleton" style={{ height, borderRadius: 10, width: i % 2 ? '70%' : '100%' }} />
+                  ))}
+                </div>
+              </div>
+              <span className="small muted">{screen.label}</span>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ОТЗЫВЫ О ПРИЛОЖЕНИИ */}
-      <section style={{ padding: '40px 5% 80px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <h2 style={{ color: '#fff', fontSize: '2rem', marginBottom: '40px' }}>Что говорят наши тестировщики?</h2>
-        <div className="glass-panel" style={{ padding: '30px', borderLeft: '4px solid var(--accent)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', color: 'var(--accent)', marginBottom: '15px' }}>
-            <Star fill="var(--accent)" size={20}/><Star fill="var(--accent)" size={20}/><Star fill="var(--accent)" size={20}/><Star fill="var(--accent)" size={20}/><Star fill="var(--accent)" size={20}/>
-          </div>
-          <p style={{ color: '#ccc', fontStyle: 'italic', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '15px' }}>
-            "Приложение просто пушка! Заказал пиво, пока ехал в лифте. Курьер приехал быстрее, чем я успел открыть банку чипсов. 10 из 10!"
-          </p>
-          <strong style={{ color: '#fff' }}>— Владимир, бета-тестер</strong>
+      {/* FEATURES */}
+      <section className="section container">
+        <div className="section-head center">
+          <span className="eyebrow">Что будет</span>
+          <h2>Возможности приложения</h2>
+        </div>
+        <div className="grid grid-3">
+          {features.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="card card-hover text-center stack" style={{ alignItems: 'center' }}>
+              <span className="icon-btn text-accent"><Icon size={21} /></span>
+              <strong className="small">{title}</strong>
+              <p className="small muted" style={{ margin: 0 }}>{desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-    </motion.div>
+      {/* STATUS */}
+      <section className="section-sm container-narrow">
+        <div className="glass-panel stack" style={{ padding: '34px 26px', alignItems: 'center', textAlign: 'center', borderColor: 'var(--border-accent)' }}>
+          <CheckCircle size={30} className="text-accent" />
+          <h2>Мы работаем над этим</h2>
+          <p className="muted" style={{ maxWidth: 540, margin: 0 }}>
+            Ссылки для скачивания появятся здесь после релиза. Пока все товары и акции доступны
+            на сайте — а о дате запуска мы расскажем в рассылке.
+          </p>
+          <div className="flex gap-2 wrap center">
+            <button className="btn btn-primary" onClick={notifyMe}><Bell size={16} /> Уведомить о релизе</button>
+            <Link to="/contacts" className="btn btn-outline">Написать нам</Link>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

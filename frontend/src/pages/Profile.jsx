@@ -1,119 +1,451 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
+import {
+  Award,
+  CheckCircle2,
+  Gift,
+  Heart,
+  LogOut,
+  Mail,
+  Phone,
+  Settings,
+  ShieldCheck,
+  ShoppingBag,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { LogOut, Mail, Award, Box, Gift, Heart, CheckCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import ProductCard from '../components/ProductCard';
+import EmptyState from '../components/EmptyState';
+import { formatPrice } from '../utils/product';
+
+const tabs = [
+  { id: 'overview', label: 'Обзор', icon: ShieldCheck },
+  { id: 'orders', label: 'Заказы', icon: ShoppingBag },
+  { id: 'wishlist', label: 'Избранное', icon: Heart },
+  { id: 'bonuses', label: 'Бонусы', icon: Gift },
+  { id: 'settings', label: 'Настройки', icon: Settings },
+];
+
+const dateOptions = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+const formatServerDate = (value) => {
+  if (!value) return '';
+  if (Array.isArray(value) && value.length >= 3) {
+    const [year, month, day, hours = 0, minutes = 0] = value;
+    return new Date(year, month - 1, day, hours, minutes).toLocaleString('ru-RU', dateOptions);
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('ru-RU', dateOptions);
+};
+
+const statusClass = (status) => {
+  const value = (status || '').toLowerCase();
+  if (value.includes('отмен')) return 'badge badge-danger';
+  if (value.includes('оплач') || value.includes('доставл') || value.includes('выполн')) return 'badge badge-success';
+  return 'badge badge-accent';
+};
 
 export default function Profile() {
-  const { user, logout, getUserOrders, getUserBonusBalance, getUserPromos, getWishlist } = useAuth();
+  const {
+    user,
+    logout,
+    refreshUser,
+    updateProfile,
+    getUserOrders,
+    getUserBonusBalance,
+    getUserPromos,
+    getWishlist,
+  } = useAuth();
   const { addNotification } = useNotification();
-  const [activeTab, setActiveTab] = useState('orders');
-  const [canClaimBonus, setCanClaimBonus] = useState(false);
 
-  const orders = getUserOrders() || [];
-  const promos = getUserPromos() || [];
-  const wishlist = getWishlist() || [];
-  const bonusBalance = getUserBonusBalance();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [serverOrders, setServerOrders] = useState([]);
+  const [productNames, setProductNames] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const [canClaimBonus, setCanClaimBonus] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  const [settings, setSettings] = useState({ name: '', phone: '', password: '' });
+  const [settingsErrors, setSettingsErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      const lastClaim = localStorage.getItem(`urechki_last_bonus_${user.email}`);
-      const today = new Date().toDateString();
-      if (lastClaim !== today) setCanClaimBonus(true);
-    }
-  }, [user]);
+    if (!user?.id) return undefined;
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError('');
 
-  const claimDailyBonus = () => {
-    if (!canClaimBonus) return;
-    const today = new Date().toDateString();
-    localStorage.setItem(`urechki_last_bonus_${user.email}`, today);
-    
-    const currentBonus = Number(localStorage.getItem(`urechki_bonus_${user.email}`) || 0);
-    localStorage.setItem(`urechki_bonus_${user.email}`, currentBonus + 50);
-    
-    addNotification('Вы получили 50 бонусных рублей!', 'success');
-    setCanClaimBonus(false);
-    window.location.reload(); 
+    Promise.allSettled([
+      axios.get(`/api/orders/customer/${user.id}`),
+      axios.get('/api/products'),
+    ]).then(([ordersResult, productsResult]) => {
+      if (cancelled) return;
+
+      if (ordersResult.status === 'fulfilled' && Array.isArray(ordersResult.value.data)) {
+        setServerOrders(ordersResult.value.data);
+      } else {
+        setLoadError('Не удалось загрузить заказы с сервера. Показаны сохранённые локально.');
+      }
+
+      if (productsResult.status === 'fulfilled' && Array.isArray(productsResult.value.data)) {
+        const names = {};
+        productsResult.value.data.forEach((product) => { names[product.id] = product.name; });
+        setProductNames(names);
+      }
+
+      setIsLoading(false);
+    });
+
+    refreshUser();
+    return () => { cancelled = true; };
+  }, [user?.id, refreshUser]);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    const lastClaim = localStorage.getItem(`urechki_daily_bonus_${user.email}`);
+    setCanClaimBonus(lastClaim !== new Date().toDateString());
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (activeTab === 'settings' && user) {
+      setSettings({ name: user.name || '', phone: user.phone || '', password: '' });
+      setSettingsErrors({});
+    }
+  }, [activeTab, user]);
+
+  const localOrders = useMemo(() => getUserOrders() || [], [getUserOrders]);
+  const promos = getUserPromos() || [];
+  const wishlist = getWishlist() || [];
+  const bonusBalance = Math.max(0, Number(getUserBonusBalance()) || 0);
+
+  const orders = useMemo(() => {
+    const byId = new Map();
+    localOrders.forEach((order) => {
+      if (order?.id != null) byId.set(String(order.id), { ...order, source: 'local' });
+    });
+    serverOrders.forEach((order) => {
+      if (order?.id != null) byId.set(String(order.id), { ...order, source: 'server' });
+    });
+
+    return [...byId.values()].map((order) => {
+      const isServer = order.source === 'server';
+      const rawDate = isServer ? order.createdAt : order.date;
+      const sortValue = Array.isArray(rawDate)
+        ? new Date(rawDate[0], rawDate[1] - 1, rawDate[2], rawDate[3] || 0, rawDate[4] || 0).getTime()
+        : new Date(rawDate || 0).getTime();
+      const productName = productNames[order.productId];
+
+      return {
+        id: order.id,
+        title: isServer
+          ? (productName ? `${productName}${order.quantity ? ` · ${order.quantity} шт.` : ''}` : `Товар #${order.productId}${order.quantity ? ` · ${order.quantity} шт.` : ''}`)
+          : (order.items || `Заказ #${order.id}`),
+        amount: Number(isServer ? order.finalPrice : (order.finalTotal ?? order.finalPrice)) || 0,
+        status: order.status || 'Оплачен',
+        method: isServer ? order.paymentMethod : order.method,
+        dateText: isServer ? formatServerDate(rawDate) : (order.date || ''),
+        transactionId: order.transactionId,
+        sortValue: Number.isFinite(sortValue) ? sortValue : 0,
+      };
+    }).sort((a, b) => (b.sortValue - a.sortValue) || (Number(b.id) - Number(a.id)));
+  }, [localOrders, serverOrders, productNames]);
+
+  const totalSpent = orders
+    .filter((order) => !String(order.status).toLowerCase().includes('отмен'))
+    .reduce((sum, order) => sum + order.amount, 0);
+
+  const claimDailyBonus = async () => {
+    if (!canClaimBonus || isClaiming || !user?.id) return;
+    setIsClaiming(true);
+    try {
+      await axios.post(`/api/customers/${user.id}/bonuses`, { delta: 50 });
+      localStorage.setItem(`urechki_daily_bonus_${user.email}`, new Date().toDateString());
+      setCanClaimBonus(false);
+      await refreshUser();
+      addNotification('Вы получили 50 бонусных рублей!', 'success');
+    } catch (error) {
+      addNotification(error.response?.data?.message || 'Не удалось начислить бонус', 'error');
+    } finally {
+      setIsClaiming(false);
+    }
   };
 
-  if (!user) return <div style={{ padding: '150px 10%', textAlign: 'center', color: '#fff' }}>Войдите в аккаунт</div>;
+  const setSettingsField = (key) => (event) => {
+    setSettings((prev) => ({ ...prev, [key]: event.target.value }));
+    setSettingsErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
-  const totalSpent = orders.reduce((sum, o) => sum + (Number(o.finalTotal) || 0), 0);
+  const saveSettings = async (event) => {
+    event.preventDefault();
+    const nextErrors = {};
+    if (settings.name.trim().length < 2) nextErrors.name = 'Укажите имя (минимум 2 символа)';
+    if (settings.phone.trim() && settings.phone.replace(/\D/g, '').length < 10) {
+      nextErrors.phone = 'Введите корректный номер телефона';
+    }
+    if (settings.password && settings.password.length < 4) {
+      nextErrors.password = 'Пароль должен быть не короче 4 символов';
+    }
+    setSettingsErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0 || !user?.id) return;
+
+    const payload = { name: settings.name.trim(), phone: settings.phone.trim() };
+    if (settings.password) payload.password = settings.password;
+
+    setIsSaving(true);
+    try {
+      const result = await updateProfile(payload);
+      if (result.success) {
+        setSettings((prev) => ({ ...prev, password: '' }));
+        addNotification('Профиль успешно сохранён', 'success');
+      } else {
+        addNotification(result.message || 'Не удалось сохранить профиль', 'error');
+      }
+    } catch {
+      addNotification('Ошибка соединения с сервером', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="container section">
+        <EmptyState
+          title="Войдите в аккаунт"
+          description="Личный кабинет доступен после входа."
+          action={<Link to="/" className="btn btn-primary btn-lg">На главную</Link>}
+        />
+      </div>
+    );
+  }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '80px 5%', maxWidth: '1000px', margin: '0 auto', minHeight: '80vh' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '2.5rem', color: 'var(--accent)' }}>Профиль</h1>
-        <button onClick={logout} style={{ background: 'transparent', border: '1px solid #ff4444', color: '#ff4444', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '5px' }}><LogOut size={18}/> Выйти</button>
+    <div className="container section">
+      <div className="flex between wrap gap-2" style={{ marginBottom: 28 }}>
+        <div>
+          <span className="eyebrow">Личный кабинет</span>
+          <h2>Профиль</h2>
+        </div>
+        <button type="button" className="btn btn-danger btn-sm" onClick={logout}>
+          <LogOut size={17} /> Выйти
+        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-        <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--accent)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold', marginBottom: '15px' }}>{user.name[0].toUpperCase()}</div>
-          <h2 style={{ color: '#fff' }}>{user.name}</h2>
-          <p style={{ color: '#aaa', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' }}><Mail size={16}/> {user.email}</p>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <h3 style={{ color: '#fff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}><Award color="var(--accent)"/> Бонусный счет</h3>
-          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)' }}>{bonusBalance.toFixed(0)} ₽</div>
-          
-          <button 
-            onClick={claimDailyBonus} 
-            disabled={!canClaimBonus}
-            style={{ marginTop: '20px', background: canClaimBonus ? 'var(--accent)' : '#222', color: canClaimBonus ? '#000' : '#555', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: canClaimBonus ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}
+      <div className="tabs" role="tablist" aria-label="Разделы профиля">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === id}
+            className={`tab ${activeTab === id ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab(id)}
           >
-            {canClaimBonus ? 'Забрать ежедневный бонус (+50 ₽)' : <><CheckCircle size={18}/> Бонус получен сегодня</>}
+            <span className="flex gap-2" style={{ gap: 8 }}>
+              <Icon size={16} /> {label}
+            </span>
           </button>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '15px', borderBottom: '1px solid #333', marginBottom: '20px', overflowX: 'auto' }}>
-        <button onClick={() => setActiveTab('orders')} style={{ background: 'transparent', border: 'none', color: activeTab === 'orders' ? 'var(--accent)' : '#888', padding: '10px 0', borderBottom: activeTab === 'orders' ? '2px solid var(--accent)' : 'none', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>Заказы ({orders.length})</button>
-        <button onClick={() => setActiveTab('wishlist')} style={{ background: 'transparent', border: 'none', color: activeTab === 'wishlist' ? 'var(--accent)' : '#888', padding: '10px 0', borderBottom: activeTab === 'wishlist' ? '2px solid var(--accent)' : 'none', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>Избранное ({wishlist.length})</button>
-        <button onClick={() => setActiveTab('promos')} style={{ background: 'transparent', border: 'none', color: activeTab === 'promos' ? 'var(--accent)' : '#888', padding: '10px 0', borderBottom: activeTab === 'promos' ? '2px solid var(--accent)' : 'none', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>Промокоды ({promos.length})</button>
+        ))}
       </div>
 
       <AnimatePresence mode="wait">
-        {activeTab === 'orders' && (
-          <motion.div key="orders" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {orders.length === 0 ? <p style={{ color: '#888' }}>Нет заказов</p> : orders.map((o, i) => (
-              <div key={i} className="glass-panel" style={{ padding: '20px', marginBottom: '15px', borderLeft: '4px solid var(--accent)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <h4 style={{ color: '#fff' }}>Заказ #{o.id}</h4>
-                  <span style={{ color: 'var(--accent)' }}>{o.finalTotal} ₽</span>
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === 'overview' && (
+            <div className="grid grid-3">
+              <div className="card stack">
+                <div className="avatar" style={{ width: 64, height: 64, fontSize: '1.7rem' }}>
+                  {(user.name || 'У')[0].toUpperCase()}
                 </div>
-                <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{o.items}</p>
-                <p style={{ color: '#666', fontSize: '0.8rem', marginTop: '5px' }}>{o.date}</p>
+                <div>
+                  <h3>{user.name}</h3>
+                  <p className="small muted flex gap-2"><Mail size={15} /> {user.email}</p>
+                  {user.phone && <p className="small muted flex gap-2"><Phone size={15} /> {user.phone}</p>}
+                </div>
+                <span className={`badge ${user.role === 'Клиент' ? '' : 'badge-accent'}`} style={{ alignSelf: 'flex-start' }}>
+                  {user.role || 'Клиент'}
+                </span>
               </div>
-            ))}
-          </motion.div>
-        )}
 
-        {activeTab === 'wishlist' && (
-          <motion.div key="wishlist" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
-            {wishlist.length === 0 ? <p style={{ color: '#888' }}>Пусто</p> : wishlist.map(p => (
-              <div key={p.id} className="glass-panel" style={{ padding: '15px' }}>
-                <h4 style={{ color: '#fff' }}>{p.name}</h4>
-                <p style={{ color: 'var(--accent)', marginTop: '10px' }}>{p.price} ₽</p>
+              <div className="card stack">
+                <div className="flex gap-2"><Award className="text-accent" size={22} /><h3>Бонусы</h3></div>
+                <div className="text-accent bold" style={{ fontSize: '2.2rem' }}>{formatPrice(bonusBalance)}</div>
+                <p className="small muted">Бонусами можно оплатить до 50% заказа.</p>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setActiveTab('bonuses')}>
+                  Подробнее
+                </button>
               </div>
-            ))}
-          </motion.div>
-        )}
 
-        {activeTab === 'promos' && (
-          <motion.div key="promos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
-            {promos.length === 0 ? <p style={{ color: '#888' }}>Нет промокодов</p> : promos.map((p, i) => (
-              <div key={i} style={{ background: 'rgba(212,175,55,0.1)', border: '1px dashed var(--accent)', padding: '15px', borderRadius: '10px', textAlign: 'center' }}>
-                <Gift color="var(--accent)" style={{ margin: '0 auto 10px' }} />
-                <h4 style={{ color: '#fff' }}>{p.prize}</h4>
-                <div style={{ background: '#000', color: 'var(--accent)', padding: '5px', marginTop: '10px', borderRadius: '5px', fontWeight: 'bold' }}>{p.promoCode}</div>
+              <div className="card stack">
+                <div className="flex gap-2"><ShoppingBag className="text-accent" size={22} /><h3>Покупки</h3></div>
+                <div className="bold" style={{ fontSize: '2.2rem' }}>{orders.length}</div>
+                <p className="small muted">Сумма заказов: {formatPrice(totalSpent)}</p>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setActiveTab('orders')}>
+                  Мои заказы
+                </button>
               </div>
-            ))}
-          </motion.div>
-        )}
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="stack">
+              {loadError && <div className="card"><span className="form-error">{loadError}</span></div>}
+              {isLoading && (
+                <div className="card flex gap-2 center">
+                  <span className="spinner" /> <span className="muted small">Загружаем заказы…</span>
+                </div>
+              )}
+              {!isLoading && orders.length === 0 && (
+                <EmptyState
+                  title="Заказов пока нет"
+                  description="Здесь появится история ваших покупок."
+                  action={<Link to="/catalog" className="btn btn-primary">В каталог</Link>}
+                />
+              )}
+              {orders.map((order) => (
+                <div className="card" key={order.id} style={{ borderLeft: '3px solid var(--accent)' }}>
+                  <div className="flex between wrap gap-2">
+                    <div className="stack gap-2">
+                      <div className="flex wrap gap-2">
+                        <h3 className="small bold" style={{ fontFamily: 'inherit' }}>Заказ #{order.id}</h3>
+                        <span className={statusClass(order.status)}>{order.status}</span>
+                      </div>
+                      <span className="bold">{order.title}</span>
+                      <span className="dim tiny">{order.dateText}{order.method ? ` · ${order.method}` : ''}</span>
+                    </div>
+                    <div className="text-accent bold" style={{ fontSize: '1.3rem' }}>{formatPrice(order.amount)}</div>
+                  </div>
+                  {order.transactionId && <div className="dim tiny" style={{ marginTop: 8 }}>Транзакция: {order.transactionId}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'wishlist' && (
+            wishlist.length === 0 ? (
+              <EmptyState
+                title="В избранном пусто"
+                description="Нажмите на сердечко у понравившегося товара, чтобы сохранить его здесь."
+                action={<Link to="/catalog" className="btn btn-primary">Выбрать пиво</Link>}
+              />
+            ) : (
+              <div className="grid grid-3">
+                {wishlist.map((product) => <ProductCard key={product.id} product={product} />)}
+              </div>
+            )
+          )}
+
+          {activeTab === 'bonuses' && (
+            <div className="grid grid-2">
+              <div className="card stack">
+                <div className="flex gap-2"><Award className="text-accent" size={22} /><h3>Бонусный счёт</h3></div>
+                <div className="text-accent bold" style={{ fontSize: '3rem' }}>{formatPrice(bonusBalance)}</div>
+                <p className="small muted">
+                  Ежедневно заходите за бонусом и оплачивайте до 50% стоимости заказа.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={claimDailyBonus}
+                  disabled={!canClaimBonus || isClaiming}
+                >
+                  {isClaiming ? <><span className="spinner" /> Начисляем…</> : canClaimBonus ? (
+                    <><Gift size={17} /> Забрать ежедневный бонус (+50 ₽)</>
+                  ) : (
+                    <><CheckCircle2 size={17} /> Бонус уже получен сегодня</>
+                  )}
+                </button>
+              </div>
+
+              <div className="card stack">
+                <div className="flex gap-2"><Gift className="text-accent" size={22} /><h3>Мои промокоды</h3></div>
+                {promos.length === 0 ? (
+                  <p className="small muted">Промокодов пока нет. Участвуйте в акциях, чтобы получить скидку.</p>
+                ) : (
+                  <div className="flex wrap gap-2">
+                    {promos.map((promo, index) => (
+                      <div className="badge badge-accent" key={`${promo.promoCode}-${index}`}>
+                        {promo.prize} · <span className="bold">{promo.promoCode}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="dim tiny">Промокод применяется на шаге оплаты оформления заказа.</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="card" style={{ maxWidth: 560 }}>
+              <div className="flex gap-2" style={{ marginBottom: 20 }}>
+                <Settings className="text-accent" size={22} />
+                <h3>Данные профиля</h3>
+              </div>
+              <form className="stack" onSubmit={saveSettings} noValidate>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-name">Имя</label>
+                  <input
+                    id="profile-name"
+                    className="input"
+                    type="text"
+                    value={settings.name}
+                    onChange={setSettingsField('name')}
+                    aria-invalid={Boolean(settingsErrors.name)}
+                  />
+                  {settingsErrors.name && <span className="form-error" role="alert">{settingsErrors.name}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-phone">Телефон</label>
+                  <input
+                    id="profile-phone"
+                    className="input"
+                    type="tel"
+                    placeholder="+7 (999) 123-45-67"
+                    value={settings.phone}
+                    onChange={setSettingsField('phone')}
+                    aria-invalid={Boolean(settingsErrors.phone)}
+                  />
+                  {settingsErrors.phone && <span className="form-error" role="alert">{settingsErrors.phone}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-email">Email</label>
+                  <input id="profile-email" className="input" type="email" value={user.email} disabled />
+                  <span className="dim tiny">Email и роль изменить нельзя.</span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="profile-password">Новый пароль</label>
+                  <input
+                    id="profile-password"
+                    className="input"
+                    type="password"
+                    placeholder="Оставьте пустым, чтобы не менять"
+                    value={settings.password}
+                    onChange={setSettingsField('password')}
+                    aria-invalid={Boolean(settingsErrors.password)}
+                  />
+                  {settingsErrors.password && <span className="form-error" role="alert">{settingsErrors.password}</span>}
+                </div>
+
+                <button type="submit" className="btn btn-primary" disabled={isSaving} style={{ alignSelf: 'flex-start' }}>
+                  {isSaving ? <><span className="spinner" /> Сохраняем…</> : 'Сохранить изменения'}
+                </button>
+              </form>
+            </div>
+          )}
+        </motion.div>
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

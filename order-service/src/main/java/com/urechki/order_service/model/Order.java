@@ -3,6 +3,7 @@ package com.urechki.order_service.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -12,8 +13,18 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long customerId; // ID клиента из CRM
-    private Long productId;  // ID товара из Каталога
+    private Long customerId;
+    private Long productId;
     private Integer quantity;
-    private BigDecimal finalPrice; // Итоговая цена со скидкой
+
+    private BigDecimal basePrice;
+    private BigDecimal finalPrice;
+
+    private String status = "Оплачен";
+    private String paymentMethod = "Банковская карта";
+    private String transactionId;
+    private String promoCode;
+    private BigDecimal bonusSpent = BigDecimal.ZERO;
+
+    private LocalDateTime createdAt = LocalDateTime.now();
 }
