@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Text } from 'react-native';
 import { useFonts, Unbounded_400Regular, Unbounded_600SemiBold, Unbounded_700Bold } from '@expo-google-fonts/unbounded';
 import {
   useFonts as useManrope,
@@ -26,13 +24,6 @@ export default function App() {
     Manrope_600SemiBold,
     Manrope_700Bold,
   });
-
-  useEffect(() => {
-    // Регистрируем шрифты под именами, используемыми в теме (Unbounded-700Bold и т.д.).
-    if (!unboundedLoaded || !manropeLoaded) return;
-    Text.defaultProps = Text.defaultProps || {};
-    Text.defaultProps.style = [{ color: colors.text }];
-  }, [unboundedLoaded, manropeLoaded]);
 
   if (!unboundedLoaded || !manropeLoaded) return null;
 
