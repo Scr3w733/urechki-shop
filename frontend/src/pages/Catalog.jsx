@@ -96,7 +96,7 @@ export default function Catalog() {
 
     // Загружаем товары
     setLoading(true);
-    axios.get('http://localhost:8080/api/products')
+    axios.get('/api/products')
       .then(res => {
         setProducts(res.data);
         setError(null);

@@ -22,7 +22,7 @@ export default function Navbar() {
 
   useEffect(() => {
     // Загружаем товары для поиска при старте
-    fetch('http://localhost:8080/api/products')
+    fetch('/api/products')
       .then(res => res.json())
       .then(data => setAllProducts(data))
       .catch(() => {});

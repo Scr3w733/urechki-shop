@@ -10,7 +10,7 @@ export default function SmartSearch() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('http://localhost:8080/api/products').then(res => setProducts(res.data));
+    axios.get('/api/products').then(res => setProducts(res.data));
   }, []);
 
   useEffect(() => {

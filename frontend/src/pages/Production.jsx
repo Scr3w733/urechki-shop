@@ -23,7 +23,7 @@ export default function Production() {
   const [modalInfo, setModalInfo] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:8080/api/products')
+    axios.get('/api/products')
       .then(res => setProducts(res.data))
       .catch(err => console.log(err));
   }, []);

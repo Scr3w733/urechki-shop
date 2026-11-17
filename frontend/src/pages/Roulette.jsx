@@ -35,7 +35,7 @@ export default function Roulette() {
     let prizeData = { prize: "Скидка 5%", promoCode: "BEER5", discount: 5 };
 
     try {
-      const response = await axios.get('http://localhost:8081/api/customers/promo');
+      const response = await axios.get('/api/customers/promo');
       if (response.data && response.data.prizeIndex !== undefined) {
         index = response.data.prizeIndex;
         prizeData = response.data;

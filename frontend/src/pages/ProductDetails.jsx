@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus, Minus, Star, ShoppingBag, Heart, MessageSquare, ShieldCheck, Truck, RefreshCcw, Share2, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Star, ShoppingBag, Heart, MessageSquare, ShieldCheck, Truck, RefreshCcw, Share2, Link as LinkIcon, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,7 +39,7 @@ export default function ProductDetails() {
   useEffect(() => {
     window.scrollTo(0, 0); // Скролл наверх при загрузке
 
-    axios.get(`http://localhost:8080/api/products/${id}`)
+    axios.get(`/api/products/${id}`)
       .then(res => {
         setProduct(res.data);
         const saved = JSON.parse(localStorage.getItem('urechki_recently_viewed') || '[]');
@@ -50,7 +50,7 @@ export default function ProductDetails() {
       })
       .catch(err => console.log(err));
       
-    axios.get('http://localhost:8080/api/products')
+    axios.get('/api/products')
       .then(res => setRelated(res.data.filter(p => p.id.toString() !== id).slice(0, 4)))
       .catch(err => console.log(err));
 

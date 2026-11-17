@@ -26,7 +26,6 @@ import {
   RefreshCw,
   Percent,
   MessageSquare,
-  Instagram,
   Send,
   CheckCircle,
   PlayCircle,
@@ -268,7 +267,7 @@ export default function Home() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    axios.get('http://localhost:8080/api/products')
+    axios.get('/api/products')
       .then(res => setProducts(res.data))
       .catch(() => setProducts([]));
 

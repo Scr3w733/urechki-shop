@@ -10,8 +10,15 @@ services:
       - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./db/00-schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ./products.sql:/docker-entrypoint-initdb.d/01-products.sql:ro
     networks:
       - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d urechki_main"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   redis:
     image: redis:alpine
@@ -20,6 +27,11 @@ services:
       - "6379:6379"
     networks:
       - urechki_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   catalog-service:
     build: ./catalog-service
@@ -33,10 +45,18 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/api/products || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   crm-service:
     build: ./crm-service
@@ -48,9 +68,30 @@ services:
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: password
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/api/customers || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment_service
+    ports:
+      - "8085:8085"
+    networks:
+      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8085"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   order-service:
     build: ./order-service
@@ -62,10 +103,22 @@ services:
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: password
     depends_on:
-      - db
-      - payment-service
+      db:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      crm-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
     networks:
       - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8082/api/orders || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   notification-service:
     build: ./notification-service
@@ -73,18 +126,16 @@ services:
     ports:
       - "8084:8084"
     depends_on:
-      - order-service
+      order-service:
+        condition: service_healthy
     networks:
       - urechki_network
-
-  # НОВЫЙ СЕРВИС ОПЛАТЫ
-  payment-service:
-    build: ./payment-service
-    container_name: payment_service
-    ports:
-      - "8085:8085"
-    networks:
-      - urechki_network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8084"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   frontend:
     build: ./frontend
@@ -92,9 +143,16 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - catalog-service
-      - crm-service
-      - order-service
+      catalog-service:
+        condition: service_healthy
+      crm-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
     networks:
       - urechki_network
 

@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:8081/api/customers/login', { email, password });
+      const response = await axios.post('/api/customers/login', { email, password });
       setUser(response.data);
       localStorage.setItem('urechki_active_user', JSON.stringify(response.data));
       return { success: true };
@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
 
   const register = async (name, email, password, role = 'Клиент') => {
     try {
-      const response = await axios.post('http://localhost:8081/api/customers/register', {
+      const response = await axios.post('/api/customers/register', {
         name, email, password, role, phone: "+70000000000"
       });
       setUser(response.data);

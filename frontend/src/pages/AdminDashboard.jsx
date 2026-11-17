@@ -26,15 +26,15 @@ export default function AdminDashboard() {
       return;
     }
 
-    axios.get('http://localhost:8082/api/orders').then(res => setOrders(res.data)).catch(() => {});
-    axios.get('http://localhost:8080/api/products').then(res => setProducts(res.data)).catch(() => {});
-    axios.get('http://localhost:8081/api/customers').then(res => setCustomers(res.data)).catch(() => {});
+    axios.get('/api/orders').then(res => setOrders(res.data)).catch(() => {});
+    axios.get('/api/products').then(res => setProducts(res.data)).catch(() => {});
+    axios.get('/api/customers').then(res => setCustomers(res.data)).catch(() => {});
   }, [user, navigate, addNotification]);
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:8080/api/products', {
+      await axios.post('/api/products', {
         ...newProduct,
         price: Number(newProduct.price),
         stockQuantity: 100
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
       addNotification('Товар успешно добавлен!', 'success');
       setNewProduct({ name: '', category: 'Пиво', price: '', description: '' });
       // Обновляем список
-      axios.get('http://localhost:8080/api/products').then(res => setProducts(res.data));
+      axios.get('/api/products').then(res => setProducts(res.data));
     } catch (err) {
       addNotification('Ошибка при добавлении товара', 'error');
     }

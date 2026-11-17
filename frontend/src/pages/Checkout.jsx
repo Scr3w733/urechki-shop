@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, MapPin, XCircle, Wallet, Gift } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const paymentMethods = [
@@ -22,8 +22,7 @@ const paymentMethods = [
 export default function Checkout() {
   const { cart, getTotal, clearCart } = useCart();
   const { user, addOrderToHistory, getUserBonusBalance, getUserPromos, removePromoFromUser } = useAuth();
-  const navigate = useNavigate();
-  
+
   const [step, setStep] = useState(1);
   const [address, setAddress] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -69,14 +68,16 @@ export default function Checkout() {
     setOrderError(null);
 
     try {
-      const response = await axios.post('http://localhost:8082/api/orders', {
-        customerId: user.id, 
-        productId: cart[0].id, 
-        quantity: cart[0].quantity,
-        finalPrice: finalTotal 
-      });
+      // Каждый товар корзины оформляется отдельным заказом:
+      // серверная модель Order хранит только один productId.
+      const responses = await Promise.all(cart.map(item => axios.post('/api/orders', {
+        customerId: user.id,
+        productId: item.id,
+        quantity: item.quantity,
+        finalPrice: total > 0 ? finalTotal * (item.price * item.quantity) / total : 0,
+      })));
 
-      const newOrderId = response.data.id || Math.floor(Math.random() * 10000);
+      const newOrderId = responses[0].data.id || Math.floor(Math.random() * 10000);
       setOrderId(newOrderId);
       
       // Если использовали промокод - удаляем его из профиля

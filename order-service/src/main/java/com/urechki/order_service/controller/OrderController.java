@@ -58,8 +58,11 @@ public class OrderController {
             Order savedOrder = orderRepository.save(order);
 
             try {
+                String customerEmail = customer.get("email") != null
+                        ? customer.get("email").toString()
+                        : "client@example.com";
                 Map<String, String> notification = new HashMap<>();
-                notification.put("email", "client@example.com");
+                notification.put("email", customerEmail);
                 notification.put("message", "Заказ №" + savedOrder.getId() + " на сумму " + savedOrder.getFinalPrice() + " руб. оформлен!");
                 restTemplate.postForObject("http://notification-service:8084/api/notifications/send", notification, String.class);
             } catch (Exception e) {
