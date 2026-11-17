@@ -88,11 +88,15 @@ curl http://localhost:8090/api/mobile/health
 | `APP_SERVICES_CATALOG` | `http://catalog-service:8080` | Каталог товаров (`/api/products`, `/api/products/categories`). |
 | `APP_SERVICES_CRM` | `http://crm-service:8081` | Профиль клиента (`/api/customers/{id}`). |
 | `APP_SERVICES_ORDERS` | `http://order-service:8082` | Заказы (`/api/orders/customer/{id}`). |
-| `APP_SERVICES_LOYALTY` | `http://loyalty-service:8086` | Бонусы/уровни (сервис появится позже). |
+| `APP_SERVICES_LOYALTY` | `http://loyalty-service:8086` | Бонусы/уровни: `GET /api/loyalty/accounts/{customerId}`. |
 | `APP_SERVICES_TRACKING` | `http://tracking-service:8087` | Статусы доставки (зарезервировано для будущих эндпоинтов). |
-| `APP_SERVICES_FAVORITES` | `http://favorites-service:8088` | Избранное (сервис появится позже). |
+| `APP_SERVICES_FAVORITES` | `http://favorites-service:8088` | Избранное: `GET/POST /api/favorites/{customerId}`, `DELETE /api/favorites/{customerId}/{productId}`. |
 | `APP_SERVICES_NOTIFICATIONS` | `http://notification-service:8084` | Уведомления (зарезервировано для будущих эндпоинтов). |
-| `APP_SERVICES_ANALYTICS` | `http://analytics-service:8089` | События мобильного приложения. |
+| `APP_SERVICES_ANALYTICS` | `http://analytics-service:8089` | События: `POST /api/analytics/events` (для совместимости также `/api/events`). |
+
+Шлюз также перебирает запасные пути для лояльности (`/api/loyalty/customers/{id}`, `/api/loyalty/{id}`) и
+избранного (`/api/favorites/customer/{id}`, `/api/favorites/ids/{id}`), поэтому изменение схемы этих сервисов
+не потребует правок мобильного приложения.
 
 ## Отказоустойчивость и ошибки
 
@@ -100,8 +104,8 @@ curl http://localhost:8090/api/mobile/health
   блок содержит `error` с понятным русским текстом, остальные данные остаются заполненными.
 - `/events` никогда не возвращает ошибку из-за недоступной аналитики — событие помечается принятым локально
   (`delivered=false`, `error` в теле).
-- Для будущих сервисов (лояльность, избранное, аналитика) шлюз перебирает несколько типичных путей, поэтому
-  точная схема этих сервисов может измениться без правок мобильного приложения.
+- Для лояльности, избранного и аналитики шлюз перебирает несколько типичных путей, поэтому точная схема этих
+  сервисов может измениться без правок мобильного приложения.
 - CORS разрешён для всех origin и методов `GET/POST/PUT/PATCH/DELETE/OPTIONS`.
 - Ошибки валидации и запросов — JSON вида
   `{"timestamp", "status", "error", "message", "path"}`; стек-трейсы клиенту не отдаются.

@@ -1,7 +1,5 @@
 package com.urechki.analytics_service.controller;
 
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 import com.urechki.analytics_service.model.AnalyticsEvent;
 import com.urechki.analytics_service.repository.AnalyticsEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

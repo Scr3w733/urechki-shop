@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Heart, HeartOff, LogIn, Plus, RefreshCw, Sync } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, Heart, HeartOff, LogIn, Plus, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import AuthModal from '../components/AuthModal';
@@ -174,7 +174,7 @@ export default function Favorites() {
             <RefreshCw size={16} /> Обновить
           </button>
           <button className="btn btn-primary" onClick={handleSync} disabled={syncing}>
-            {syncing ? <><span className="spinner" /> Синхронизируем…</> : <><Sync size={16} /> Синхронизировать</>}
+            {syncing ? <><span className="spinner" /> Синхронизируем…</> : <><ArrowLeftRight size={16} /> Синхронизировать</>}
           </button>
         </div>
       </div>
