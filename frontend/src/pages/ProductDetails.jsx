@@ -21,7 +21,8 @@ import { LineSkeleton, ProductGridSkeleton } from '../components/Skeleton';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { categoryEmoji, categoryGradient, formatPrice, productRating, productReviews } from '../utils/product';
+import { categoryEmoji, categoryGradient, formatPrice, productImage, productRating, productReviews } from '../utils/product';
+import { getComposition } from '../data/composition';
 
 const DEMO_NAMES = ['Алексей', 'Мария', 'Дмитрий', 'Ольга', 'Сергей'];
 const DEMO_TEXTS = [
@@ -164,6 +165,7 @@ export default function ProductDetails() {
   const favorite = isInWishlist(product.id);
   const reviews = [...userReviews, ...demoReviews];
   const sku = `UR-${String(product.id).padStart(5, '0')}`;
+  const composition = getComposition(product);
 
   const handleFavorite = () => {
     if (!user) {
@@ -229,11 +231,15 @@ export default function ProductDetails() {
       <div className="grid grid-2 gap-3" style={{ alignItems: 'start' }}>
         <div
           className="product-media"
-          style={{ background: categoryGradient(product.category), minHeight: 420, fontSize: '10rem', borderRadius: 20 }}
+          style={{ background: categoryGradient(product.category), minHeight: 420, borderRadius: 20, overflow: 'hidden', position: 'relative' }}
         >
-          <span>{categoryEmoji(product.category)}</span>
+          <img
+            src={productImage(product)}
+            alt={product.name}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
           <div className="flex wrap gap-2" style={{ position: 'absolute', top: 16, left: 16, zIndex: 2 }}>
-            <span className="badge badge-accent">{product.category}</span>
+            <span className="badge badge-accent">{categoryEmoji(product.category)} {product.category}</span>
             <span className={`badge ${inStock ? 'badge-success' : 'badge-danger'}`}>
               {inStock ? `В наличии: ${maxQuantity}` : 'Нет в наличии'}
             </span>
@@ -341,24 +347,34 @@ export default function ProductDetails() {
         )}
 
         {activeTab === 'specs' && (
-          <div className="table-wrap">
-            <table className="table">
-              <tbody>
-                <tr>
-                  <td className="bold muted">Категория</td>
-                  <td>{product.category}</td>
-                </tr>
-                <tr>
-                  <td className="bold muted">Наличие</td>
-                  <td>{inStock ? `${maxQuantity} шт.` : 'Нет в наличии'}</td>
-                </tr>
-                <tr>
-                  <td className="bold muted">Артикул (SKU)</td>
-                  <td>{sku}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <dl
+            className="composition-list"
+            style={{ margin: 0, display: 'grid', gridTemplateColumns: 'minmax(130px, 190px) 1fr', gap: 0 }}
+          >
+            {[
+              ['Категория', product.category],
+              ['Наличие', inStock ? `${maxQuantity} шт.` : 'Нет в наличии'],
+              ['Артикул (SKU)', sku],
+              ['Стиль / тип', composition.title],
+              ['Состав', composition.ingredients],
+              ['Технология', composition.technology],
+              ['Крепость (ABV)', composition.abv],
+              ['Горечь (IBU)', composition.ibu],
+              ['Цвет', composition.color],
+              ['Вкус', composition.taste],
+              ['Сочетание', composition.pairing],
+              ['Срок годности', composition.shelfLife],
+            ].map(([term, value]) => (
+              <div key={term} style={{ display: 'contents' }}>
+                <dt className="bold muted small" style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+                  {term}
+                </dt>
+                <dd className="small" style={{ margin: 0, padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         )}
 
         {activeTab === 'delivery' && (

@@ -1,10 +1,13 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
-import { Gift, Sparkles, Info } from 'lucide-react';
+import { Gift, History, Info, Sparkles } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+
+const HISTORY_KEY = 'urechki_roulette_history';
 
 const sectors = [
   { text: 'Скидка\n5%', color: '#1a1a1a', textColor: '#d4af37' },
@@ -15,13 +18,27 @@ const sectors = [
   { text: '500\nрублей', color: '#d4af37', textColor: '#000000' },
 ];
 
+const readHistory = () => {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function Roulette() {
   const { user, addPromoToUser } = useAuth();
   const { addNotification } = useNotification();
   const [isSpinning, setIsSpinning] = useState(false);
   const [prize, setPrize] = useState(null);
   const [rotation, setRotation] = useState(0);
+  const [history, setHistory] = useState(readHistory);
   const rotationRef = useRef(0);
+  const spinTimer = useRef(null);
+
+  useEffect(() => () => window.clearTimeout(spinTimer.current), []);
 
   const spinWheel = async () => {
     if (isSpinning) return;
@@ -56,11 +73,26 @@ export default function Roulette() {
     setRotation(newRotation);
     rotationRef.current = newRotation;
 
-    setTimeout(() => {
+    spinTimer.current = window.setTimeout(() => {
       setPrize(prizeData);
       setIsSpinning(false);
       addPromoToUser(prizeData);
-      addNotification(`Приз «${prizeData.prize}» сохранён в вашем профиле`, 'success');
+
+      const entry = {
+        id: Date.now(),
+        prize: prizeData.prize,
+        promoCode: prizeData.promoCode,
+        date: new Date().toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      };
+      const nextHistory = [entry, ...history].slice(0, 5);
+      setHistory(nextHistory);
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(nextHistory));
+      } catch {
+        // История останется доступна до перезагрузки страницы.
+      }
+
+      addNotification('Приз сохранён в профиле и в истории розыгрышей', 'success');
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#d4af37', '#ffffff', '#8b0000'] });
     }, 5000);
   };
@@ -72,7 +104,7 @@ export default function Roulette() {
         <h1>Колесо фортуны</h1>
         <p className="muted" style={{ maxWidth: 580, margin: '16px auto 0' }}>
           Крутите колесо и получайте призы — скидки на пиво, доставку или маленький подарок.
-          Промокод сохранится в вашем профиле.
+          Промокод сохранится в вашем профиле, а последние розыгрыши — в истории на этой странице.
         </p>
       </section>
 
@@ -160,6 +192,36 @@ export default function Roulette() {
             <p className="tiny dim" style={{ margin: 0 }}>Промокод сохранён в вашем профиле</p>
             <div className="badge badge-accent uppercase" style={{ fontSize: '1.4rem', letterSpacing: '4px', padding: '12px 22px' }}>{prize.promoCode}</div>
           </motion.div>
+        )}
+      </section>
+
+      <section className="section-sm container-narrow">
+        <div className="section-head">
+          <span className="eyebrow"><History size={14} /> История призов</span>
+          <h2>Последние 5 розыгрышей</h2>
+          <p className="small">Список хранится только в этом браузере.</p>
+        </div>
+        {history.length ? (
+          <div className="stack" style={{ gap: 10 }}>
+            {history.map(item => (
+              <div key={item.id} className="glass-panel flex between wrap gap-2" style={{ padding: '14px 18px' }}>
+                <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                  <span className="badge badge-accent"><Gift size={14} /></span>
+                  <div>
+                    <strong className="small">{item.prize}</strong>
+                    <div className="tiny dim">{item.date}</div>
+                  </div>
+                </div>
+                <span className="badge uppercase" style={{ letterSpacing: '2px' }}>{item.promoCode}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="История пока пуста"
+            description="Покрутите колесо — здесь появятся последние 5 выигрышей."
+            icon={<Gift size={42} />}
+          />
         )}
       </section>
 

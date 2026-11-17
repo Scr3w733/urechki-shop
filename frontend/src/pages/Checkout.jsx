@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -109,7 +109,7 @@ function Summary({ cart, subtotal, promoLabel, promoDiscount, bonusSpent, delive
 }
 
 export default function Checkout() {
-  const { cart, getTotal, removeFromCart } = useCart();
+  const { cart, getTotal, removeFromCart, setQuantity } = useCart();
   const {
     user,
     addOrderToHistory,
@@ -141,6 +141,58 @@ export default function Checkout() {
   const bonusSpent = useBonuses ? maxBonus : 0;
   const finalTotal = Math.max(0, subtotal - promoDiscount - bonusSpent + deliveryFee);
   const bonusesEarned = Math.floor(finalTotal * 0.1);
+
+  const [stockMap, setStockMap] = useState({});
+  const [stockLoading, setStockLoading] = useState(true);
+  const [stockLoadError, setStockLoadError] = useState('');
+
+  // Сверяем корзину с актуальным каталогом: сервер всё равно проверяет остатки,
+  // но так покупатель видит проблему до нажатия «Оплатить».
+  useEffect(() => {
+    if (cart.length === 0) {
+      setStockMap({});
+      setStockLoading(false);
+      setStockLoadError('');
+      return undefined;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    setStockLoading(true);
+    setStockLoadError('');
+    axios.get('/api/products', { signal: controller.signal })
+      .then((response) => {
+        if (cancelled) return;
+        const list = Array.isArray(response.data) ? response.data : [];
+        const map = {};
+        list.forEach((product) => { map[String(product.id)] = product; });
+        setStockMap(map);
+      })
+      .catch((requestError) => {
+        if (cancelled || axios.isCancel(requestError)) return;
+        setStockMap({});
+        setStockLoadError('Не удалось проверить наличие заранее. Цена и остатки будут подтверждены сервером при оплате.');
+      })
+      .finally(() => { if (!cancelled) setStockLoading(false); });
+    return () => { cancelled = true; controller.abort(); };
+  }, [cart]);
+
+  const stockChecked = !stockLoading && !stockLoadError;
+  const stockProblems = stockChecked ? cart.map((item) => {
+    const product = stockMap[String(item.id)];
+    if (!product) {
+      return { item, type: 'missing', message: 'Товар больше не продаётся', available: 0 };
+    }
+    const available = Math.max(0, Number(product.stockQuantity) || 0);
+    if (available < item.quantity) {
+      return {
+        item,
+        type: 'insufficient',
+        message: `Недостаточно товара: доступно ${available}, в корзине ${item.quantity}`,
+        available,
+      };
+    }
+    return null;
+  }).filter(Boolean) : [];
 
   const setDeliveryField = (key) => (event) => {
     setDelivery((prev) => ({ ...prev, [key]: event.target.value }));
@@ -178,6 +230,10 @@ export default function Checkout() {
     }
     if (cart.length === 0) {
       setOrderError('Корзина пуста. Добавьте товары перед оформлением.');
+      return;
+    }
+    if (stockProblems.length > 0) {
+      setOrderError('Обновите количество или уберите товары, которых больше нет в наличии.');
       return;
     }
 
@@ -307,6 +363,59 @@ export default function Checkout() {
           </span>
         ))}
       </div>
+
+      {step !== 3 && (stockProblems.length > 0 || stockLoadError) && (
+        <div className="card" role="alert" style={{ borderColor: 'var(--danger)', marginBottom: 24 }}>
+          <div className="flex gap-2" style={{ alignItems: 'flex-start' }}>
+            <AlertCircle size={20} color="var(--danger)" />
+            <div className="stack gap-2" style={{ flex: 1, minWidth: 0 }}>
+              <strong>
+                {stockProblems.length > 0
+                  ? 'Проверьте корзину перед оплатой'
+                  : 'Не удалось проверить наличие'}
+              </strong>
+              {stockProblems.length > 0 && (
+                <p className="small muted" style={{ margin: 0 }}>
+                  Наличие изменилось с момента добавления товаров. Обновите количество или уберите позиции.
+                </p>
+              )}
+              {stockLoadError && (
+                <p className="small muted" style={{ margin: 0 }}>{stockLoadError}</p>
+              )}
+              {stockProblems.map(({ item, message, available, type }) => (
+                <div
+                  key={item.id}
+                  className="flex between wrap gap-2"
+                  style={{ borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 10 }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div className="bold small">{item.name}</div>
+                    <div className="small" style={{ color: 'var(--danger)' }}>{message}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    {type === 'insufficient' && (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => setQuantity(item.id, Math.max(1, available))}
+                      >
+                        Обновить количество
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => removeFromCart(item.id)}
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {step !== 3 && (
@@ -479,7 +588,7 @@ export default function Checkout() {
                       type="button"
                       className="btn btn-primary"
                       onClick={handlePay}
-                      disabled={isProcessing || !user}
+                      disabled={isProcessing || !user || stockProblems.length > 0}
                       style={{ flex: '1 1 220px' }}
                     >
                       {isProcessing ? (

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ShoppingBag, X } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const DISMISSED_KEY = 'urechki_social_proof_dismissed';
 const SHOWN_KEY = 'urechki_social_proof_shown';
@@ -17,8 +18,11 @@ export default function SocialProof() {
   const [purchase, setPurchase] = useState(null);
   const timersRef = useRef([]);
   const reduceMotion = useReducedMotion();
+  const { socialProofEnabled } = useTheme();
 
   useEffect(() => {
+    if (!socialProofEnabled) return undefined;
+
     const largeScreen = window.matchMedia('(min-width: 1024px)');
     let alreadySeen = false;
     try {
@@ -50,7 +54,7 @@ export default function SocialProof() {
       timersRef.current = [];
       largeScreen.removeEventListener('change', onResize);
     };
-  }, []);
+  }, [socialProofEnabled]);
 
   const dismiss = () => {
     setPurchase(null);
@@ -60,6 +64,8 @@ export default function SocialProof() {
       /* storage may be unavailable */
     }
   };
+
+  if (!socialProofEnabled) return null;
 
   return (
     <AnimatePresence>

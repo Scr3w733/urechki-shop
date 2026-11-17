@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, PackageOpen } from 'lucide-react';
 import InfoModal from '../components/InfoModal';
+import { getComposition, COMPOSITION_GUIDE } from '../data/composition';
 import { categoryEmoji } from '../utils/product';
 
 const prodButtonsData = [
@@ -17,13 +18,6 @@ const prodButtonsData = [
   { id: 9, title: 'Водоподготовка', info: 'Используем артезианскую воду из скважины глубиной 120 метров. Многоступенчатая фильтрация и УФ-обеззараживание.' },
   { id: 10, title: 'Автоматизация', info: 'Процессом варки управляет компьютер Siemens. Человеческий фактор сведён к минимуму.' },
 ];
-
-const getComposition = (category) => {
-  if (category === 'Пиво') return { ing: 'Вода, солод, хмель, дрожжи.', cond: 'Брожение в стальных танках при 18 °C.' };
-  if (category === 'Закуски') return { ing: 'Натуральные специи, соль, мука, мясо/рыба.', cond: 'Обжарка при 180 °C, сушка 4 часа, вакуумная упаковка.' };
-  if (category === 'Мерч') return { ing: '100% хлопок / металл / керамика.', cond: 'Дочернее производство в Шанхае. Ручная шелкография.' };
-  return { ing: 'Смешанный состав.', cond: 'Соблюдение стандартов качества.' };
-};
 
 export default function Production() {
   const [products, setProducts] = useState([]);
@@ -84,6 +78,9 @@ export default function Production() {
         <div className="section-head">
           <span className="eyebrow">Состав и условия</span>
           <h2>Что внутри наших продуктов</h2>
+          <p className="small muted" style={{ marginTop: 10 }}>
+            {COMPOSITION_GUIDE.map((entry) => `${entry.term} — ${entry.description}`).join('. ')}.
+          </p>
         </div>
 
         {loading ? (
@@ -107,7 +104,7 @@ export default function Production() {
                 <div className="stack" style={{ gap: 10 }}>
                   {products.filter(p => p.category === category).map(item => {
                     const isOpen = openId === item.id;
-                    const composition = getComposition(item.category);
+                    const composition = getComposition(item);
                     return (
                       <div key={item.id} className="glass-panel" style={{ overflow: 'hidden' }}>
                         <button
@@ -122,16 +119,24 @@ export default function Production() {
                         <AnimatePresence initial={false}>
                           {isOpen && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
-                              <div className="grid grid-2" style={{ padding: '0 20px 20px', gap: 16 }}>
-                                <div>
-                                  <span className="eyebrow" style={{ marginBottom: 6 }}>Состав</span>
-                                  <p className="small muted" style={{ margin: 0 }}>{composition.ing}</p>
-                                </div>
-                                <div>
-                                  <span className="eyebrow" style={{ marginBottom: 6 }}>Условия производства</span>
-                                  <p className="small muted" style={{ margin: 0 }}>{composition.cond}</p>
-                                </div>
-                              </div>
+                              <dl className="grid grid-2" style={{ padding: '0 20px 20px', gap: 16, margin: 0 }}>
+                                {[
+                                  ['Стиль / тип', composition.title],
+                                  ['Состав', composition.ingredients],
+                                  ['Технология', composition.technology],
+                                  ['Крепость (ABV)', composition.abv],
+                                  ['Горечь (IBU)', composition.ibu],
+                                  ['Цвет', composition.color],
+                                  ['Вкус', composition.taste],
+                                  ['Сочетание', composition.pairing],
+                                  ['Срок годности', composition.shelfLife],
+                                ].map(([term, value]) => (
+                                  <div key={term}>
+                                    <dt className="eyebrow" style={{ marginBottom: 6 }}>{term}</dt>
+                                    <dd className="small muted" style={{ margin: 0 }}>{value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
                             </motion.div>
                           )}
                         </AnimatePresence>

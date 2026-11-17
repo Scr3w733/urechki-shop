@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { categoryEmoji, formatPrice } from '../utils/product';
+import { formatPrice, productImage } from '../utils/product';
 
 const FREE_DELIVERY = 2000;
 
@@ -62,7 +62,9 @@ export default function CartSidebar() {
                   </div>
                   {cart.map(item => (
                     <motion.div key={item.id} className="cart-line" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}>
-                      <div className="cart-line-media">{categoryEmoji(item.category)}</div>
+                      <div className="cart-line-media" style={{ overflow: 'hidden', padding: 0 }}>
+                        <img src={productImage(item)} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
                       <div className="cart-line-info">
                         <Link to={`/product/${item.id}`} onClick={() => setIsCartOpen(false)} className="product-title">{item.name}</Link>
                         <span className="text-accent bold small">{formatPrice(item.price)}</span>

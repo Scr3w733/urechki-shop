@@ -120,14 +120,14 @@ function PromoPill() {
       >
         <X size={13} />
       </button>
-      <Gift size={22} color="#000" style={{ flexShrink: 0 }} />
+      <Gift size={22} color="#1a1608" style={{ flexShrink: 0 }} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '0.68rem', color: '#000', fontWeight: 800 }}>
+        <span style={{ fontSize: '0.68rem', color: '#1a1608', fontWeight: 800 }}>
           {userName ? `Для ${userName}` : 'Промокод'}
         </span>
-        <span style={{ fontSize: '1.05rem', color: '#000', fontWeight: 900, letterSpacing: '1px' }}>URE4KA</span>
+        <span style={{ fontSize: '1.05rem', color: '#1a1608', fontWeight: 800, letterSpacing: '1px' }}>URE4KA</span>
       </div>
-      <div style={{ background: '#000', padding: 6, borderRadius: '50%', display: 'flex', marginLeft: 'auto' }}>
+      <div style={{ background: '#1a1608', padding: 6, borderRadius: '50%', display: 'flex', marginLeft: 'auto' }}>
         {copied ? <Check size={15} color="var(--accent)" /> : <Copy size={15} color="var(--accent)" />}
       </div>
     </motion.div>

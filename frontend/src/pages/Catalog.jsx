@@ -288,7 +288,8 @@ export default function Catalog() {
             />
             <input
               className="input"
-              type="search"
+              type="text"
+              inputMode="search"
               placeholder="Поиск по названию или описанию"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}

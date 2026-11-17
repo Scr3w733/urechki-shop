@@ -5,7 +5,7 @@ import Modal from './Modal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { categoryEmoji, categoryGradient, formatPrice, productRating, productReviews } from '../utils/product';
+import { categoryGradient, formatPrice, productImage, productRating, productReviews } from '../utils/product';
 
 export default function QuickView({ product, onClose }) {
   const { addToCart } = useCart();
@@ -26,9 +26,13 @@ export default function QuickView({ product, onClose }) {
   return (
     <Modal open={!!product} onClose={onClose} size="lg" title={<span className="eyebrow" style={{ margin: 0 }}>Быстрый просмотр</span>}>
       <div className="quick-view">
-        <div className="quick-view-media" style={{ background: categoryGradient(product.category) }}>
-          <span style={{ fontSize: '8rem' }}>{categoryEmoji(product.category)}</span>
-          <span className="badge badge-accent" style={{ position: 'absolute', top: 16, left: 16 }}>{product.category}</span>
+        <div className="quick-view-media" style={{ background: categoryGradient(product.category), position: 'relative', overflow: 'hidden' }}>
+          <img
+            src={productImage(product)}
+            alt={product.name}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          <span className="badge badge-accent" style={{ position: 'absolute', top: 16, left: 16, zIndex: 2 }}>{product.category}</span>
         </div>
         <div className="stack">
           <div>

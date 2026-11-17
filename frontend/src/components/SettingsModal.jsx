@@ -1,9 +1,73 @@
-import { Check, MousePointer2, Palette, Sparkles } from 'lucide-react';
+import { Accessibility, Check, LayoutGrid, MousePointer2, Palette } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Modal from './Modal';
 
+function SettingsSection({ icon: Icon, title, children }) {
+  return (
+    <section className="settings-section">
+      <h3 className="settings-title">
+        <Icon size={17} className="text-accent" aria-hidden="true" />
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function ChoiceChips({ options, value, onChange, label }) {
+  return (
+    <div className="settings-chip-row" role="group" aria-label={label}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={`chip ${value === option.value ? 'chip-active' : ''}`}
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ToggleRow({ checked, onChange, label, hint }) {
+  return (
+    <label className="toggle-row">
+      <span className="toggle-copy">
+        <span className="toggle-label">{label}</span>
+        {hint && <span className="settings-hint">{hint}</span>}
+      </span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    </label>
+  );
+}
+
+const DENSITY_OPTIONS = [
+  { value: 'comfortable', label: 'Комфортно' },
+  { value: 'compact', label: 'Компактно' }
+];
+
+const FONT_SCALE_OPTIONS = [
+  { value: 'small', label: 'Маленький' },
+  { value: 'normal', label: 'Обычный' },
+  { value: 'large', label: 'Крупный' }
+];
+
 export default function SettingsModal({ isOpen, onClose }) {
-  const { theme, setTheme, THEMES, cursorStyle, setCursorStyle, CURSORS } = useTheme();
+  const {
+    theme, setTheme, THEMES,
+    cursorStyle, setCursorStyle, CURSORS,
+    density, setDensity,
+    animationsEnabled, setAnimationsEnabled,
+    fontScale, setFontScale,
+    socialProofEnabled, setSocialProofEnabled
+  } = useTheme();
 
   return (
     <Modal
@@ -13,12 +77,8 @@ export default function SettingsModal({ isOpen, onClose }) {
       footer={<button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>}
     >
       <div className="stack">
-        <section>
-          <h3 className="flex gap-2" style={{ fontSize: '1rem', marginBottom: 12 }}>
-            <Palette size={17} className="text-accent" aria-hidden="true" />
-            Акцентный цвет
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+        <SettingsSection icon={Palette} title="Тема">
+          <div className="settings-grid">
             {Object.entries(THEMES).map(([key, option]) => {
               const selected = theme.color === option.color;
               return (
@@ -47,45 +107,64 @@ export default function SettingsModal({ isOpen, onClose }) {
               );
             })}
           </div>
-        </section>
+        </SettingsSection>
 
         <div className="divider" style={{ margin: '2px 0' }} />
 
-        <section>
-          <h3 className="flex gap-2" style={{ fontSize: '1rem', marginBottom: 12 }}>
-            <MousePointer2 size={17} className="text-accent" aria-hidden="true" />
-            Курсор
-          </h3>
-          <div className="flex wrap gap-1">
-            {Object.entries(CURSORS).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={`chip ${cursorStyle === key ? 'chip-active' : ''}`}
-                aria-pressed={cursorStyle === key}
-                onClick={() => setCursorStyle(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="tiny dim" style={{ marginTop: 10 }}>
+        <SettingsSection icon={MousePointer2} title="Курсор">
+          <ChoiceChips
+            label="Стиль курсора"
+            options={Object.entries(CURSORS).map(([value, label]) => ({ value, label }))}
+            value={cursorStyle}
+            onChange={setCursorStyle}
+          />
+          <p className="settings-hint">
             При выборе «Стандартный» остаётся обычный системный курсор.
           </p>
-        </section>
+        </SettingsSection>
 
         <div className="divider" style={{ margin: '2px 0' }} />
 
-        <section>
-          <h3 className="flex gap-2" style={{ fontSize: '1rem', marginBottom: 8 }}>
-            <Sparkles size={17} className="text-accent" aria-hidden="true" />
-            Уменьшение анимации
-          </h3>
-          <p className="small muted">
-            Анимации становятся короче и спокойнее автоматически, если в системе включено
-            «Уменьшить движение» (prefers-reduced-motion).
+        <SettingsSection icon={LayoutGrid} title="Интерфейс">
+          <div className="settings-field">
+            <span className="settings-field-label">Плотность интерфейса</span>
+            <ChoiceChips
+              label="Плотность интерфейса"
+              options={DENSITY_OPTIONS}
+              value={density}
+              onChange={setDensity}
+            />
+          </div>
+          <div className="settings-field">
+            <span className="settings-field-label">Размер шрифта</span>
+            <ChoiceChips
+              label="Размер шрифта"
+              options={FONT_SCALE_OPTIONS}
+              value={fontScale}
+              onChange={setFontScale}
+            />
+          </div>
+        </SettingsSection>
+
+        <div className="divider" style={{ margin: '2px 0' }} />
+
+        <SettingsSection icon={Accessibility} title="Доступность">
+          <ToggleRow
+            label="Анимации интерфейса"
+            hint="Отключение убирает переходы и движение. Индикатор загрузки остаётся активным."
+            checked={animationsEnabled}
+            onChange={setAnimationsEnabled}
+          />
+          <ToggleRow
+            label="Уведомления о покупках"
+            hint="Всплывающие сообщения о недавних заказах других покупателей."
+            checked={socialProofEnabled}
+            onChange={setSocialProofEnabled}
+          />
+          <p className="settings-hint">
+            Системная настройка «Уменьшить движение» дополнительно смягчает анимации автоматически.
           </p>
-        </section>
+        </SettingsSection>
       </div>
     </Modal>
   );

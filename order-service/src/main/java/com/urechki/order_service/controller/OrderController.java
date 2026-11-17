@@ -191,6 +191,7 @@ public class OrderController {
             restTemplate.patchForObject(catalogUrl + "/api/products/" + productId + "/stock",
                     Map.of("quantity", delta), ProductDto.class);
         } catch (RestClientException ex) {
+            log.warn("Не удалось изменить остаток товара #{}: {}", productId, ex.getMessage());
             if (ex.getMessage() != null && ex.getMessage().contains("400")) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Недостаточно товара на складе");
             }

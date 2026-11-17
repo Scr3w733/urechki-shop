@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Beer, CheckCircle, Headphones, Phone } from 'lucide-react';
+import { ArrowLeft, Beer, CheckCircle, ChevronRight, Headphones, HelpCircle, Phone, ShoppingBag } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import { featuresData } from '../data/features';
 
@@ -27,48 +27,60 @@ export default function FeaturePage() {
   return (
     <div className="fade-in">
       <section className="section container-narrow">
-        <Link to="/" className="btn btn-ghost btn-sm" style={{ marginBottom: 28 }}>
-          <ArrowLeft size={17} /> На главную
-        </Link>
+        <div className="flex gap-2 wrap" style={{ alignItems: 'center', marginBottom: 28 }}>
+          <Link to="/" className="btn btn-ghost btn-sm"><ArrowLeft size={17} /> На главную</Link>
+          <span className="tiny dim flex gap-1" style={{ alignItems: 'center' }}>
+            <ChevronRight size={13} /> {feature.title}
+          </span>
+        </div>
 
-        <div className="flex gap-2" style={{ alignItems: 'center', marginBottom: 32 }}>
-          <span className="badge badge-accent" style={{ width: 64, height: 64, borderRadius: 18, justifyContent: 'center' }}>
+        <div className="flex gap-3" style={{ alignItems: 'center', marginBottom: 18 }}>
+          <span className="badge badge-accent" style={{ width: 64, height: 64, borderRadius: 18, justifyContent: 'center', flexShrink: 0 }}>
             <Beer size={32} />
           </span>
           <div>
             <span className="eyebrow" style={{ marginBottom: 4 }}>Раздел сайта</span>
-            <h1>{feature.title}</h1>
+            <h1 style={{ margin: 0 }}>{feature.title}</h1>
           </div>
         </div>
+        <p className="muted" style={{ fontSize: '1.1rem', lineHeight: 1.8, maxWidth: 720, margin: '0 0 32px' }}>
+          {feature.desc}
+        </p>
 
-        <div className="glass-panel stack" style={{ padding: 32 }}>
-          <p className="muted" style={{ fontSize: '1.05rem', lineHeight: 1.8, margin: 0 }}>{feature.desc}</p>
-          <p className="muted" style={{ lineHeight: 1.8, margin: 0 }}>
-            Мы трепетно относимся к качеству своих услуг. Каждый клиент для нас — часть большой
-            семьи «У Речушки». Если у вас есть вопросы по этому разделу, свяжитесь с нашей
-            службой поддержки по телефону <a className="text-accent bold" href="tel:+79516240161">+7 (951) 624-01-61</a>.
-          </p>
+        <div className="glass-panel stack" style={{ padding: 32, gap: 18 }}>
+          <div>
+            <span className="eyebrow">Коротко</span>
+            <h2 style={{ marginBottom: 12 }}>Что стоит знать</h2>
+            <p className="small muted" style={{ margin: 0, lineHeight: 1.8 }}>
+              Информация в разделе носит справочный характер. Условия акций, доставки и часов
+              работы уточняйте в актуальных разделах сайта или у службы поддержки.
+            </p>
+          </div>
 
           <div className="card" style={{ borderLeft: '3px solid var(--accent)', background: 'rgba(var(--accent-rgb), .06)' }}>
-            <h3 style={{ marginBottom: 14 }}>Особенности раздела «{feature.title}»</h3>
-            <ul className="stack small muted" style={{ gap: 8, paddingLeft: 20 }}>
-              <li>Индивидуальный подход к каждому гостю.</li>
-              <li>Только проверенная информация и актуальные данные.</li>
-              <li>Постоянные обновления и улучшения сервиса.</li>
+            <h3 className="small bold" style={{ marginBottom: 14 }}>Где найти подробности</h3>
+            <ul className="stack small muted" style={{ gap: 10, paddingLeft: 18, margin: 0 }}>
+              <li className="flex gap-2" style={{ alignItems: 'flex-start' }}><CheckCircle size={16} className="text-accent" /> Товары и цены — в каталоге.</li>
+              <li className="flex gap-2" style={{ alignItems: 'flex-start' }}><CheckCircle size={16} className="text-accent" /> Типичные вопросы — в разделе FAQ.</li>
+              <li className="flex gap-2" style={{ alignItems: 'flex-start' }}><CheckCircle size={16} className="text-accent" /> Адреса и телефоны — на странице контактов.</li>
             </ul>
           </div>
         </div>
       </section>
 
       <section className="section-sm container-narrow">
+        <div className="section-head center">
+          <span className="eyebrow">Куда дальше</span>
+          <h2>Полезные разделы</h2>
+        </div>
         <div className="grid grid-3">
           <Link to="/catalog" className="card card-hover text-center stack" style={{ alignItems: 'center' }}>
-            <Beer size={26} className="text-accent" />
+            <ShoppingBag size={26} className="text-accent" />
             <strong className="small">Каталог</strong>
-            <span className="small muted">Посмотреть все товары</span>
+            <span className="small muted">Все товары и цены</span>
           </Link>
           <Link to="/faq" className="card card-hover text-center stack" style={{ alignItems: 'center' }}>
-            <CheckCircle size={26} className="text-accent" />
+            <HelpCircle size={26} className="text-accent" />
             <strong className="small">FAQ</strong>
             <span className="small muted">Частые вопросы</span>
           </Link>
@@ -78,7 +90,8 @@ export default function FeaturePage() {
             <span className="small muted">Все способы связи</span>
           </Link>
         </div>
-        <div className="text-center" style={{ marginTop: 24 }}>
+        <div className="flex gap-2 wrap center" style={{ marginTop: 24 }}>
+          <Link to="/catalog" className="btn btn-primary">Перейти в каталог</Link>
           <a href="tel:+79516240161" className="btn btn-outline"><Phone size={16} /> Позвонить нам</a>
         </div>
       </section>

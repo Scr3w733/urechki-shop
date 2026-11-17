@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -17,6 +17,7 @@ import {
   Phone,
   Send,
   ShieldCheck,
+  SlidersHorizontal,
   Smartphone,
   Sparkles,
   Star,
@@ -27,7 +28,7 @@ import QuickView from '../components/QuickView';
 import { ProductGridSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { useNotification } from '../context/NotificationContext';
-import { categoryEmoji, categoryGradient } from '../utils/product';
+import { categoryEmoji, categoryGradient, heroImage, productImage } from '../utils/product';
 
 const categories = [
   { name: 'Пиво', desc: 'Классика и смелой крафт', to: '/catalog?search=Пиво' },
@@ -35,6 +36,14 @@ const categories = [
   { name: 'Наборы', desc: 'Готовый подарок', to: '/catalog?search=Наборы' },
   { name: 'Мерч', desc: 'Своя футболка', to: '/merch' },
   { name: 'Сертификаты', desc: 'Подарок на любой вкус', to: '/catalog?search=Сертификаты' },
+];
+
+const tasteFilters = [
+  { id: 'light', label: 'Лёгкое', emoji: '🌾', keywords: ['легк', 'лагер', 'лайт', 'light', 'светл', 'пилс', 'блонд'] },
+  { id: 'bitter', label: 'Горькое', emoji: '🌿', keywords: ['горьк', 'ipa', 'айпа', 'хмел', 'индиа', 'биттер'] },
+  { id: 'sour', label: 'Кислое', emoji: '🍋', keywords: ['кисл', 'сауэр', 'sour', 'лабик', 'ламбик'] },
+  { id: 'dark', label: 'Тёмное', emoji: '☕', keywords: ['тёмн', 'темн', 'стаут', 'портер', 'шоколад', 'кофе', 'dark'] },
+  { id: 'free', label: 'Безалкогольное', emoji: '🚫', keywords: ['безалкоголь', 'б/а', 'zero', '0.0', '0,0'] },
 ];
 
 const advantages = [
@@ -46,7 +55,7 @@ const advantages = [
 
 const stats = [
   { value: '2015', label: 'год основания' },
-  { value: '4', label: 'фирменных бара' },
+  { value: '5', label: 'адресов в городе' },
   { value: '2018', label: 'своя пивоварня' },
   { value: '1–2 ч', label: 'доставка по городу' },
 ];
@@ -75,6 +84,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [quickView, setQuickView] = useState(null);
   const [activeFaq, setActiveFaq] = useState(null);
+  const [activeTaste, setActiveTaste] = useState(null);
   const [email, setEmail] = useState('');
   const { addNotification } = useNotification();
 
@@ -95,6 +105,15 @@ export default function Home() {
 
   const featured = products.slice(0, 4);
 
+  const tasteProducts = useMemo(() => {
+    const taste = tasteFilters.find(item => item.id === activeTaste);
+    if (!taste) return products;
+    return products.filter(product => {
+      const text = `${product.name || ''} ${product.description || ''}`.toLowerCase();
+      return taste.keywords.some(keyword => text.includes(keyword));
+    });
+  }, [products, activeTaste]);
+
   const subscribe = (e) => {
     e.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email)) {
@@ -109,7 +128,17 @@ export default function Home() {
   return (
     <div className="fade-in">
       {/* ================= HERO ================= */}
-      <section className="hero container">
+      <section
+        className="hero container"
+        style={{
+          backgroundImage: `linear-gradient(90deg, rgba(11,11,13,.94) 0%, rgba(11,11,13,.74) 55%, rgba(11,11,13,.88) 100%), url("${heroImage()}")`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          borderRadius: 'var(--radius)',
+          paddingInline: 32,
+        }}
+      >
         <div className="hero-content">
           <span className="eyebrow">Сибирский крафт с 2015 года</span>
           <h1>Пиво, сваренное <span className="text-accent">у речушки</span></h1>
@@ -173,6 +202,104 @@ export default function Home() {
             action={<Link to="/contacts" className="btn btn-outline">Связаться с нами</Link>}
           />
         )}
+      </section>
+
+      {/* ================= TASTE PICKER ================= */}
+      <section className="section-sm container">
+        <div className="section-head">
+          <span className="eyebrow"><SlidersHorizontal size={14} /> Подбор по вкусу</span>
+          <h2>Найдите своё пиво</h2>
+          <p>
+            Выберите вкус — покажем товары, в названии или описании которых есть подходящие
+            слова. Это подсказка по ассортименту, а не дегустационная оценка.
+          </p>
+        </div>
+
+        <div className="flex gap-2 wrap" style={{ marginBottom: 18 }}>
+          <button
+            className={`chip ${activeTaste === null ? 'chip-active' : ''}`}
+            onClick={() => setActiveTaste(null)}
+            aria-pressed={activeTaste === null}
+          >
+            Все товары
+          </button>
+          {tasteFilters.map(taste => (
+            <button
+              key={taste.id}
+              className={`chip ${activeTaste === taste.id ? 'chip-active' : ''}`}
+              onClick={() => setActiveTaste(taste.id)}
+              aria-pressed={activeTaste === taste.id}
+            >
+              <span role="img" aria-hidden="true">{taste.emoji}</span> {taste.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex between wrap gap-2" style={{ marginBottom: 18 }}>
+          <span className="small muted">
+            {loading ? 'Загружаем каталог…' : `Найдено ${tasteProducts.length} из ${products.length} товаров`}
+          </span>
+          {activeTaste && (
+            <button className="text-button small text-accent" onClick={() => setActiveTaste(null)}>
+              Сбросить вкус
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <ProductGridSkeleton count={4} />
+        ) : tasteProducts.length ? (
+          <>
+            <div className="flex gap-2 wrap" style={{ marginBottom: 18 }}>
+              {tasteProducts.slice(0, 4).map(product => (
+                <div
+                  key={`preview-${product.id}`}
+                  style={{ position: 'relative', flex: '1 1 150px', maxWidth: 220, minHeight: 104, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={productImage(product)}
+                    alt=""
+                    aria-hidden="true"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+                  />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(8,8,10,.12), rgba(8,8,10,.8))' }} />
+                  <span className="tiny bold" style={{ position: 'absolute', left: 10, right: 10, bottom: 8, color: '#fff' }}>
+                    {product.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-4">
+              {tasteProducts.slice(0, 4).map(product => (
+                <ProductCard key={product.id} product={product} onQuickView={setQuickView} />
+              ))}
+            </div>
+            {tasteProducts.length > 4 && (
+              <p className="tiny dim" style={{ marginTop: 12 }}>
+                Показаны первые 4 совпадения — остальные смотрите в каталоге.
+              </p>
+            )}
+          </>
+        ) : (
+          <EmptyState
+            title="Совпадений пока нет"
+            description="Попробуйте другой вкус или посмотрите весь каталог — ассортимент обновляется."
+            action={<Link to="/catalog" className="btn btn-outline">Открыть каталог</Link>}
+          />
+        )}
+
+        <div className="glass-panel flex between wrap gap-2" style={{ padding: '22px 24px', marginTop: 24 }}>
+          <div>
+            <strong className="small">Не нашли подходящий вкус?</strong>
+            <p className="small muted" style={{ margin: '6px 0 0' }}>
+              Подскажем по составу и поможем собрать набор — напишите нам или листайте каталог.
+            </p>
+          </div>
+          <div className="flex gap-2 wrap">
+            <Link to="/catalog" className="btn btn-primary btn-sm">Весь каталог <ArrowRight size={16} /></Link>
+            <Link to="/contacts" className="btn btn-outline btn-sm">Спросить нас</Link>
+          </div>
+        </div>
       </section>
 
       {/* ================= CATEGORIES ================= */}
@@ -246,6 +373,7 @@ export default function Home() {
         <div className="section-head center">
           <span className="eyebrow">О нас цифрами</span>
           <h2>Небольшая пивоварня с характером</h2>
+          <p className="small">Цифры по данным пивоварни на ноябрь 2026 года.</p>
         </div>
         <div className="grid grid-4">
           {stats.map(stat => (

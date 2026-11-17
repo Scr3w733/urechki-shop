@@ -4,7 +4,7 @@ import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { categoryEmoji, categoryGradient, formatPrice, productRating } from '../utils/product';
+import { categoryGradient, formatPrice, productImage, productRating } from '../utils/product';
 
 export default function ProductCard({ product, onQuickView, list = false }) {
   const { addToCart } = useCart();
@@ -38,7 +38,13 @@ export default function ProductCard({ product, onQuickView, list = false }) {
         className="product-media"
         style={{ ...(list ? { minWidth: 190, minHeight: 170 } : {}), background: categoryGradient(product.category) }}
       >
-        <span className="product-emoji">{categoryEmoji(product.category)}</span>
+        <img
+          className="product-image"
+          src={productImage(product)}
+          alt={product.name}
+          loading="lazy"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+        />
         <span className="product-badge badge badge-accent">{product.category}</span>
         <div className="product-actions">
           <button className="icon-btn" onClick={handleFavorite} title="В избранное" aria-label="В избранное">

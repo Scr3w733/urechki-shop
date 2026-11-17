@@ -6,6 +6,7 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
       POSTGRES_DB: urechki_main
+      PGCLIENTENCODING: UTF8
     ports:
       - "5433:5432"
     volumes:

@@ -9,6 +9,28 @@ export const categoryEmoji = (category = '') => {
   return map[category] || '🍺';
 };
 
+const IMAGE_BASE = import.meta.env?.BASE_URL || '/';
+const asset = (name) => `${IMAGE_BASE.replace(/\/?$/, '/')}images/${name}`;
+
+// Локальные SVG-иллюстрации: работают офлайн, не зависят от генератора AI.
+export const productImage = (product) => {
+  const category = String(product?.category || '');
+  const name = String(product?.name || '').toLowerCase();
+  const description = String(product?.description || '').toLowerCase();
+  const haystack = `${name} ${description}`;
+
+  if (category === 'Закуски') return asset('snacks.svg');
+  if (category === 'Мерч') return asset('merch.svg');
+  if (category === 'Наборы' || category === 'Сертификаты') return asset('gift-set.svg');
+
+  if (/dipa|ipa|хмел|горьк/.test(haystack)) return asset('beer-ipa.svg');
+  if (/стаут|тёмн|темн|кофе|шоколад|портер|black|stout/.test(haystack)) return asset('beer-stout.svg');
+  return asset('beer-lager.svg');
+};
+
+export const heroImage = () => asset('hero.svg');
+export const appPreviewImage = () => asset('app-preview.svg');
+
 export const categoryGradient = (category = '') => {
   const map = {
     'Пиво': 'linear-gradient(145deg, rgba(212,175,55,.22), rgba(120,60,15,.12))',
