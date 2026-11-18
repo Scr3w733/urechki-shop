@@ -44,6 +44,12 @@ public class OrderController {
     @Value("${app.services.notification:http://notification-service:8084}")
     private String notificationUrl;
 
+    /** Единая проверка жизни сервиса для страницы состояния платформы. */
+    @GetMapping("/health")
+    public Map<String, Object> health() {
+        return Map.of("status", "ok", "service", "order-service", "orders", orderRepository.count());
+    }
+
     @GetMapping
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -202,7 +208,8 @@ public class OrderController {
     private BigDecimal calculatePromoDiscount(String promoCode, BigDecimal amount) {
         if (promoCode == null || promoCode.isBlank()) return BigDecimal.ZERO;
         return switch (promoCode.trim().toUpperCase()) {
-            case "BEER5" -> amount.multiply(new BigDecimal("0.05"));
+            // URE4KA — основной промокод сайта (плашка на главной), раньше сервер его игнорировал.
+            case "URE4KA", "BEER5" -> amount.multiply(new BigDecimal("0.05"));
             case "BEER10" -> amount.multiply(new BigDecimal("0.10"));
             case "BEER15" -> amount.multiply(new BigDecimal("0.15"));
             case "CASH500" -> amount.min(BigDecimal.valueOf(500));

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart3, Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone, ChevronDown, Gift, Heart, Truck } from 'lucide-react';
+import { BarChart3, Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone, ChevronDown, Gift, Heart, Truck, Server } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
@@ -63,6 +63,7 @@ export default function Navbar() {
     { to: '/loyalty', label: 'Бонусы', icon: Gift },
     { to: '/track', label: 'Отследить', icon: Truck },
     { to: '/favorites', label: 'Избранное', icon: Heart },
+    { to: '/status', label: 'Статус', icon: Server },
     ...(isOwner ? [{ to: '/analytics', label: 'Аналитика', icon: BarChart3 }] : []),
   ];
 
@@ -145,6 +146,7 @@ export default function Navbar() {
                       <Link to="/loyalty"><Gift size={16} /> Бонусы</Link>
                       <Link to="/track"><Truck size={16} /> Отследить заказ</Link>
                       {isOwner && <Link to="/analytics"><BarChart3 size={16} /> Аналитика</Link>}
+                      <Link to="/status"><Server size={16} /> Состояние сервисов</Link>
                       {isAdmin && <Link to="/admin"><Settings size={16} /> Админка</Link>}
                       <Link to="/app"><Smartphone size={16} /> Приложение</Link>
                       <button onClick={() => { logout(); setAccountOpen(false); }}>Выйти</button>

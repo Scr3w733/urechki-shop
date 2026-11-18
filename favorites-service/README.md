@@ -1,6 +1,6 @@
 # favorites-service
 
-Микросервис избранного для сайта и будущего мобильного приложения «Урёчки».
+Микросервис избранного для сайта и мобильного приложения «Урёчки».
 Хранит привязку `клиент -> товар` в PostgreSQL и позволяет синхронизировать
 весь список избранного одной операцией.
 
@@ -11,8 +11,20 @@
 
 ## Запуск
 
-`docker-compose.yml` в этой задаче не изменяется, поэтому сервис нужно либо добавить
-в Compose отдельно, либо запустить локально:
+Сервис **уже подключён** к общему `docker-compose.yml`:
+
+```powershell
+docker compose up -d --build favorites-service
+```
+
+Проверка через общий nginx: `curl http://localhost/api/favorites/health`.
+
+Внутри Docker-сети используются значения по умолчанию
+`jdbc:postgresql://db:5432/urechki_main`, пользователь `admin`, пароль `password`.
+Они переопределяются переменными `SPRING_DATASOURCE_URL`,
+`SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`.
+
+Для локального запуска без Compose:
 
 ```powershell
 cd favorites-service
@@ -20,17 +32,6 @@ $env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5433/urechki_main"
 $env:SPRING_DATASOURCE_USERNAME="admin"
 $env:SPRING_DATASOURCE_PASSWORD="password"
 mvn spring-boot:run
-```
-
-Внутри Docker-сети значения по умолчанию уже подходят:
-`jdbc:postgresql://db:5432/urechki_main`, пользователь `admin`, пароль `password`.
-Переопределяются переменными `SPRING_DATASOURCE_URL`,
-`SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`.
-
-Сборка образа (по желанию):
-
-```powershell
-docker build -t urechki-favorites-service ./favorites-service
 ```
 
 ## API

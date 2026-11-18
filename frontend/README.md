@@ -1,16 +1,49 @@
-# React + Vite
+# У Речушки — сайт (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Фронтенд интернет-магазина крафтового пива. В продакшн-режиме этот каталог собирается в статические файлы и отдаётся контейнером nginx вместе с прокси `/api/*` на микросервисы (см. корневой `README.md`).
 
-Currently, two official plugins are available:
+## Что здесь есть
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19, Vite, React Router, axios, Framer Motion, Lucide.
+- Ленивая загрузка страниц, глобальные провайдеры темы, авторизации, корзины и уведомлений.
+- Каталог с поиском, фильтрами, сортировкой и обновлением данных; карточка товара с похожими товарами.
+- Корзина, трёхшаговое оформление заказа, профиль, админка, лояльность, отслеживание, избранное, аналитика.
+- Страница `/status` с реальными health-проверками всех 10 микросервисов.
+- Командная строка поиска `Ctrl/Cmd + K`, чат-помощник, cookie-баннер, адаптивная тёмная тема.
 
-## React Compiler
+## Запуск
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Сначала поднимите бэкенд из корня проекта:
 
-## Expanding the Oxlint configuration
+```powershell
+docker compose up -d --build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Затем для разработки:
+
+```powershell
+cd frontend
+npm.cmd ci
+npm.cmd run dev
+```
+
+Сайт откроется на <http://localhost:5173>. Vite проксирует `/api/...` на сервисы из Docker (настройки — `vite.config.js`).
+
+## Проверки
+
+```powershell
+npm.cmd run lint
+npm.cmd run build
+```
+
+Готовая сборка появляется в `dist/`. Для проверки prod-сборки через Docker достаточно пересобрать сервис `frontend`:
+
+```powershell
+docker compose up -d --build frontend
+```
+
+## Важно
+
+- Цена заказа всегда пересчитывается сервисом заказов; фронтенд не отправляет `finalPrice`.
+- Роль «Владелец» и скидку определяет `crm-service`, а не кнопки в интерфейсе.
+- Вотермарка «Разработка сайта: Притчин Владимир, группа 9-прг401» находится в подвале сайта и не удаляется.

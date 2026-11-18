@@ -22,6 +22,7 @@ import AnalyticsScreen from '../screens/AnalyticsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import RecentlyViewedScreen from '../screens/RecentlyViewedScreen';
 import AboutScreen from '../screens/AboutScreen';
+import ServiceStatusScreen from '../screens/ServiceStatusScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -97,6 +98,7 @@ function ProfileStack() {
       <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'Аналитика' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ title: 'О приложении' }} />
+      <Stack.Screen name="ServiceStatus" component={ServiceStatusScreen} options={{ title: 'Состояние сервисов' }} />
     </Stack.Navigator>
   );
 }

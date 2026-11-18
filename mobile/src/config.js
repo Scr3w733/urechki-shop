@@ -16,12 +16,27 @@ export const ENDPOINTS = {
   catalog: `${API_ORIGIN}/api/products`,
   customers: `${API_ORIGIN}/api/customers`,
   orders: `${API_ORIGIN}/api/orders`,
+  payments: `${API_ORIGIN}/api/payments`,
   loyalty: `${API_ORIGIN}/api/loyalty`,
   tracking: `${API_ORIGIN}/api/tracking`,
   favorites: `${API_ORIGIN}/api/favorites`,
   analytics: `${API_ORIGIN}/api/analytics`,
   notifications: `${API_ORIGIN}/api/notifications`,
 };
+
+/** Все health-проверки идут через nginx — так же, как и остальные запросы приложения. */
+export const PLATFORM_SERVICES = [
+  { id: 'catalog', name: 'Каталог', path: '/api/products/health', description: 'Товары, цены и остатки' },
+  { id: 'crm', name: 'Клиенты', path: '/api/customers/health', description: 'Вход, роли и бонусы' },
+  { id: 'orders', name: 'Заказы', path: '/api/orders/health', description: 'Оформление и история' },
+  { id: 'payments', name: 'Оплата', path: '/api/payments/health', description: 'Платежи и возвраты' },
+  { id: 'notifications', name: 'Уведомления', path: '/api/notifications/health', description: 'Письма клиентам' },
+  { id: 'loyalty', name: 'Лояльность', path: '/api/loyalty/health', description: 'Уровни и кэшбэк' },
+  { id: 'tracking', name: 'Доставка', path: '/api/tracking/health', description: 'Статусы отправлений' },
+  { id: 'favorites', name: 'Избранное', path: '/api/favorites/health', description: 'Синхронизация с сайтом' },
+  { id: 'analytics', name: 'Аналитика', path: '/api/analytics/health', description: 'События и воронка' },
+  { id: 'mobile', name: 'Мобильный шлюз', path: '/api/mobile/health', description: 'API этого приложения' },
+];
 
 export const PROMO_CODES = ['URE4KA', 'BEER5', 'BEER10', 'BEER15', 'CASH500'];
 

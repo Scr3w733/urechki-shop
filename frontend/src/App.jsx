@@ -42,6 +42,7 @@ const Loyalty = lazy(() => import('./pages/Loyalty'));
 const TrackOrder = lazy(() => import('./pages/TrackOrder'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const SystemStatus = lazy(() => import('./pages/SystemStatus'));
 
 const routes = [
   ['/', Home],
@@ -65,6 +66,7 @@ const routes = [
   ['/track', TrackOrder],
   ['/favorites', Favorites],
   ['/analytics', Analytics],
+  ['/status', SystemStatus],
 ];
 
 function RouteLoader() {
