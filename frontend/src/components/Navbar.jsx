@@ -232,96 +232,75 @@ export default function Navbar() {
         </div>
       </header>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            key="nav-backdrop"
-            className="drawer-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setMobileOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.aside
-            key="nav-drawer"
-              className="nav-drawer"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 280, damping: 30 }}
-              aria-label="Меню разделов"
+      <div className={`nav-drawer-wrap ${mobileOpen ? 'open' : ''}`} aria-hidden={!mobileOpen} inert={!mobileOpen}>
+        <div className="drawer-backdrop" onClick={() => setMobileOpen(false)} />
+        <aside className="nav-drawer" aria-label="Меню разделов">
+          <div className="drawer-header">
+            <h2><Beer size={22} /> Разделы</h2>
+            <button className="icon-btn" onClick={() => setMobileOpen(false)} aria-label="Закрыть меню">
+              <X size={22} />
+            </button>
+          </div>
+
+          <div className="drawer-body">
+            <form
+              className="nav-drawer-search"
+              role="search"
+              onSubmit={(event) => { submitSearch(event); setMobileOpen(false); }}
             >
-              <div className="drawer-header">
-                <h2><Beer size={22} /> Разделы</h2>
-                <button className="icon-btn" onClick={() => setMobileOpen(false)} aria-label="Закрыть меню">
-                  <X size={22} />
-                </button>
-              </div>
+              <Search size={17} />
+              <input
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder="Найти пиво, закуски…"
+                aria-label="Поиск по каталогу"
+              />
+            </form>
 
-              <div className="drawer-body">
-                <form
-                  className="nav-drawer-search"
-                  role="search"
-                  onSubmit={(event) => { submitSearch(event); setMobileOpen(false); }}
-                >
-                  <Search size={17} />
-                  <input
-                    value={search}
-                    onChange={event => setSearch(event.target.value)}
-                    placeholder="Найти пиво, закуски…"
-                    aria-label="Поиск по каталогу"
-                  />
-                </form>
-
-                {drawerGroups.map(group => (
-                  <div className="nav-drawer-group" key={group.title}>
-                    <div className="nav-drawer-title">{group.title}</div>
-                    {group.items.map(({ to, label, icon: Icon, end }) => (
-                      <NavLink
-                        key={to}
-                        to={to}
-                        end={end}
-                        className={({ isActive }) => `nav-drawer-link ${isActive ? 'active' : ''}`}
-                      >
-                        <Icon size={18} /> {label}
-                      </NavLink>
-                    ))}
-                  </div>
+            {drawerGroups.map(group => (
+              <div className="nav-drawer-group" key={group.title}>
+                <div className="nav-drawer-title">{group.title}</div>
+                {group.items.map(({ to, label, icon: Icon, end }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    className={({ isActive }) => `nav-drawer-link ${isActive ? 'active' : ''}`}
+                  >
+                    <Icon size={18} /> {label}
+                  </NavLink>
                 ))}
               </div>
+            ))}
+          </div>
 
-              <div className="drawer-footer">
-                <button
-                  className="btn btn-primary"
-                  onClick={() => { setMobileOpen(false); openCart(); }}
-                >
-                  <ShoppingCart size={18} /> Корзина
-                  {getCount() > 0 && <span className="nav-drawer-badge">{getCount()}</span>}
-                </button>
-                <button
-                  className="btn btn-outline"
-                  onClick={() => {
-                    setMobileOpen(false);
-                    if (user) navigate('/profile');
-                    else setIsAuthOpen(true);
-                  }}
-                >
-                  <UserRound size={18} /> {user ? 'Мой профиль' : 'Войти'}
-                </button>
-                <button
-                  className="btn btn-outline"
-                  onClick={() => { setMobileOpen(false); setIsSettingsOpen(true); }}
-                >
-                  <Settings size={18} /> Настройки
-                </button>
-              </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+          <div className="drawer-footer">
+            <button
+              className="btn btn-primary"
+              onClick={() => { setMobileOpen(false); openCart(); }}
+            >
+              <ShoppingCart size={18} /> Корзина
+              {getCount() > 0 && <span className="nav-drawer-badge">{getCount()}</span>}
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={() => {
+                setMobileOpen(false);
+                if (user) navigate('/profile');
+                else setIsAuthOpen(true);
+              }}
+            >
+              <UserRound size={18} /> {user ? 'Мой профиль' : 'Войти'}
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={() => { setMobileOpen(false); setIsSettingsOpen(true); }}
+            >
+              <Settings size={18} /> Настройки
+            </button>
+          </div>
+        </aside>
+      </div>
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />

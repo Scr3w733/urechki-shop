@@ -332,14 +332,25 @@ button { cursor: pointer; }
 .text-button.danger { color: #fca5a5; }
 
 /* ===== МЕНЮ-ШТОРКА ===== */
+.nav-drawer-wrap {
+  position: fixed; inset: 0; z-index: 2000;
+  visibility: hidden; pointer-events: none;
+  transition: visibility .28s;
+}
+.nav-drawer-wrap.open { visibility: visible; pointer-events: auto; }
+.nav-drawer-wrap .drawer-backdrop { opacity: 0; transition: opacity .28s; }
+.nav-drawer-wrap.open .drawer-backdrop { opacity: 1; }
 .nav-drawer {
   position: fixed; top: 0; left: 0; z-index: 2002;
+  transform: translateX(-100%);
+  transition: transform .3s cubic-bezier(.22, .8, .24, 1);
   width: min(88vw, 360px); height: 100dvh;
   display: flex; flex-direction: column;
   background: linear-gradient(180deg, rgba(18,18,22,.99), rgba(10,10,12,.99));
   border-right: 1px solid var(--border-accent);
   box-shadow: 20px 0 70px rgba(0,0,0,.65);
 }
+.nav-drawer-wrap.open .nav-drawer { transform: translateX(0); }
 .nav-drawer .drawer-header { padding: 20px 20px 16px; }
 .nav-drawer .drawer-header h2 { font-size: 1.25rem; }
 .nav-drawer .drawer-body { padding: 16px 14px 28px; }
