@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>У Речушки — демо</title>
+<style>
+:root{--bg:#0b0b0d;--card:#151519;--accent:#ffb433;--text:#f7f3ea;--dim:#a8a19a;--line:#2b2a2e}
+*{box-sizing:border-box}html,body{margin:0;width:100%;overflow-x:hidden}body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}.wrap{width:min(100% - 24px,1100px);margin:0 auto}
+header{position:sticky;top:0;z-index:20;background:rgba(11,11,13,.94);border-bottom:1px solid var(--line)}
+.hin{display:flex;align-items:center;gap:10px;height:58px}.brand{font-weight:800;letter-spacing:.04em;font-size:1rem;color:var(--accent);white-space:nowrap}
+.spacer{flex:1}.icon{background:none;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px}
+.badge{background:var(--accent);color:#1a1206;border-radius:99px;padding:0 6px;font-size:.75rem;font-weight:800;margin-left:4px}
+main{padding:18px 0 60px}.hero{padding:26px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(140deg,#1a1713,#0f0f12)}
+h1{font-size:clamp(1.6rem,7vw,2.6rem);line-height:1.1;margin:0 0 10px;overflow-wrap:anywhere}h2{font-size:1.25rem;margin:26px 0 12px}
+p{color:var(--dim);margin:6px 0}.tag{display:inline-block;color:#1a1206;background:var(--accent);border-radius:99px;padding:3px 9px;font-size:.72rem;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;min-width:0}
+.card h3{font-size:.95rem;margin:0 0 4px;overflow-wrap:anywhere}.card .desc{color:var(--dim);font-size:.8rem;min-height:36px}
+.price{color:var(--accent);font-weight:800;font-size:1.05rem;margin:8px 0}.btn{border:0;border-radius:10px;padding:10px 14px;background:var(--accent);color:#1a1206;font-weight:800}
+.btn.alt{background:transparent;color:var(--text);border:1px solid var(--line)}
+input,select{width:100%;background:#0f0f12;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px;margin:4px 0 10px}
+.screen{display:none}.screen.active{display:block}
+.drawer{position:fixed;inset:0;z-index:40;visibility:hidden;pointer-events:none}.drawer.open{visibility:visible;pointer-events:auto}
+.drawer .back{position:absolute;inset:0;background:rgba(0,0,0,.6);opacity:0;transition:opacity .25s}.drawer.open .back{opacity:1}
+.drawer aside{position:absolute;top:0;left:0;bottom:0;width:min(88vw,330px);background:#121216;border-right:1px solid var(--line);padding:16px;transform:translateX(-100%);transition:transform .28s;overflow:auto}
+.drawer.open aside{transform:translateX(0)}.drawer a{display:block;color:var(--text);text-decoration:none;padding:10px 8px;border-radius:8px}.drawer a:hover{background:#1e1e23}
+.cartline{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:8px 0}.total{font-size:1.15rem;font-weight:800;color:var(--accent);margin:12px 0}
+.ok{background:#12251a;border:1px solid #2b6b43;border-radius:12px;padding:12px;margin-top:12px}.err{background:#2a1515;border:1px solid #7a3030;border-radius:12px;padding:12px;margin-top:12px}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--dim);font-size:.82rem;text-align:center}
+@media(max-width:480px){.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.card{padding:10px}}
+</style>
+</head>
+<body>
+<header><div class="wrap hin">
+  <button class="icon" id="burger" aria-label="Меню">☰</button>
+  <div class="brand">У РЕЧУШКИ</div><div class="spacer"></div>
+  <button class="icon" data-go="cart">Корзина<span class="badge" id="cnt">0</span></button>
+</div></header>
+
+<div class="drawer" id="drawer">
+  <div class="back" id="back"></div>
+  <aside>
+    <div style="display:flex;justify-content:space-between;align-items:center"><strong>Разделы</strong><button class="icon" id="close">✕</button></div>
+    <div style="margin-top:12px;color:var(--dim);font-size:.75rem">МАГАЗИН</div>
+    <a href="#" data-go="home">Главная</a><a href="#" data-go="catalog">Каталог</a><a href="#" data-go="cart">Корзина</a>
+    <div style="margin-top:12px;color:var(--dim);font-size:.75rem">АКЦИИ И СЕРВИСЫ</div>
+    <a href="#" data-go="roulette">Рулетка</a><a href="#" data-go="status">Состояние сервисов</a>
+  </aside>
+</div>
+
+<main class="wrap">
+  <section class="screen active" id="home">
+    <div class="hero"><span class="tag">ОБЛЕГЧЁННАЯ ДЕМО-ВЕРСИЯ</span>
+      <h1>Сибирский крафт<br>с душой</h1>
+      <p>Пиво, закуски и мерч «У Речушки». Это компактная версия сайта: она работает постоянно и помещается в небольшой контейнер.</p>
+      <p><button class="btn" data-go="catalog">В каталог</button> <button class="btn alt" data-go="roulette">Крутить рулетку</button></p>
+    </div>
+    <h2>Популярное</h2><div class="grid" id="hits"></div>
+  </section>
+
+  <section class="screen" id="catalog">
+    <h2>Каталог</h2>
+    <input id="search" placeholder="Поиск пива, закусок…" aria-label="Поиск">
+    <select id="cat" aria-label="Категория"><option value="">Все категории</option></select>
+    <div class="grid" id="list"></div>
+  </section>
+
+  <section class="screen" id="cart">
+    <h2>Корзина</h2><div id="lines"></div>
+    <div class="total" id="total">Итого: 0 ₽</div>
+    <input id="email" type="email" placeholder="Email для заказа">
+    <input id="promo" placeholder="Промокод (BEER5, URE4KA…)">
+    <button class="btn" id="checkout">Оформить заказ</button>
+    <div id="orderResult"></div>
+  </section>
+
+  <section class="screen" id="roulette">
+    <h2>Рулетка призов</h2>
+    <p>Три попытки в день на адрес почты. Призы — промокоды, которые принимает оформление заказа.</p>
+    <input id="remail" type="email" placeholder="Ваш email">
+    <button class="btn" id="spin">Крутить</button>
+    <div id="spinResult"></div>
+    <h3>История</h3><div id="history"></div>
+  </section>
+
+  <section class="screen" id="status">
+    <h2>Состояние сервисов</h2><p>В демо-версии сервисы сведены в один небольшой процесс, поэтому все они доступны одновременно.</p>
+    <div id="services"></div>
+  </section>
+</main>
+
+<footer><div class="wrap">Разработка сайта: Притчин Владимир, группа 9-прг401<br>Облегчённая демо-версия · <a href="https://github.com/Scr3w733/urechki-shop" style="color:var(--accent)">полный проект</a></div></footer>
+
+<script>
+const $ = s => document.querySelector(s);
+let products = [], cart = JSON.parse(localStorage.getItem('cart') || '{}');
+function save(){ localStorage.setItem('cart', JSON.stringify(cart)); $('#cnt').textContent = Object.values(cart).reduce((a,b)=>a+b,0); }
+function go(n){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===n)); $('#drawer').classList.remove('open'); scrollTo(0,0); }
+document.addEventListener('click', e => { const t=e.target.closest('[data-go]'); if(t){ e.preventDefault(); go(t.dataset.go); } });
+$('#burger').onclick=()=>$('#drawer').classList.add('open'); $('#close').onclick=$('#back').onclick=()=>$('#drawer').classList.remove('open');
+const money = n => new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
+function card(p){ return `<article class="card"><h3>${p.name}</h3><div class="desc">${p.description||''}</div><div class="price">${money(p.price)}</div><button class="btn" data-add="${p.id}">В корзину</button></article>`; }
+function bindAdds(){ document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const id=b.dataset.add; cart[id]=(cart[id]||0)+1; save(); b.textContent='Добавлено ✓'; setTimeout(()=>b.textContent='В корзину',900); }); }
+function render(){
+  const q=$('#search').value.toLowerCase(), cat=$('#cat').value;
+  const list=products.filter(p=>(!q||p.name.toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q))&&(!cat||p.category===cat));
+  $('#list').innerHTML=list.map(card).join('')||'<p>Ничего не найдено</p>'; bindAdds();
+  const lines=Object.entries(cart).map(([id,qty])=>{const p=products.find(x=>String(x.id)===id);return p?{p,qty}:null}).filter(Boolean);
+  $('#lines').innerHTML=lines.map(({p,qty})=>`<div class="cartline"><span>${p.name} × ${qty}</span><strong>${money(p.price*qty)}</strong></div>`).join('')||'<p>Корзина пуста</p>';
+  $('#total').textContent='Итого: '+money(lines.reduce((a,{p,qty})=>a+p.price*qty,0));
+}
+$('#search').oninput=render; $('#cat').onchange=render;
+$('#checkout').onclick=async()=>{
+  const items=Object.entries(cart).map(([id,quantity])=>({productId:Number(id),quantity}));
+  const r=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,email:$('#email').value,promo:$('#promo').value.trim().toUpperCase()})});
+  const d=await r.json();
+  $('#orderResult').innerHTML=d.error?`<div class="err">${d.error}</div>`:`<div class="ok">Заказ ${d.id} оформлен. Сумма: ${money(d.total)}${d.discount?` (скидка ${money(d.discount)})`:''}</div>`;
+  if(!d.error){cart={};save();render();}
+};
+async function loadPromo(){
+  const email=$('#remail').value; if(!email)return;
+  const d=await (await fetch('/api/customers/promo?email='+encodeURIComponent(email))).json();
+  $('#history').innerHTML=d.history?.map(h=>`<div class="cartline"><span>${h.label}</span><strong>${h.code}</strong></div>`).join('')||'<p>Пока нет призов</p>';
+  $('#spin').textContent=`Крутить (осталось ${d.attemptsLeft})`; $('#spin').disabled=d.attemptsLeft===0;
+}
+$('#remail').onchange=loadPromo;
+$('#spin').onclick=async()=>{
+  const email=$('#remail').value; if(!email){$('#spinResult').innerHTML='<div class="err">Введите email</div>';return;}
+  const r=await fetch('/api/customers/promo/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+  const d=await r.json();
+  $('#spinResult').innerHTML=d.error?`<div class="err">${d.error}</div>`:`<div class="ok">🎁 ${d.label}<br><strong>${d.code}</strong> — введите этот промокод в корзине</div>`;
+  loadPromo();
+};
+(async()=>{
+  products=await (await fetch('/api/products')).json();
+  const cats=[...new Set(products.map(p=>p.category))].filter(Boolean).sort();
+  $('#cat').innerHTML='<option value="">Все категории</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+  $('#hits').innerHTML=products.slice(0,4).map(card).join(''); bindAdds(); render(); save();
+  const services=await (await fetch('/api/status')).json();
+  $('#services').innerHTML=services.map(s=>`<div class="cartline"><span>${s.name}</span><strong style="color:#7ee2a8">В сети</strong></div>`).join('');
+})();
+</script>
+</body>
+</html>
