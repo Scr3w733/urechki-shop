@@ -27,6 +27,7 @@ import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
 import { ProductGridSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
 import { categoryEmoji, categoryGradient, heroImage, productImage } from '../utils/product';
 
@@ -79,13 +80,42 @@ const blogPreviews = [
   { id: 3, title: 'С чем сочетать разные сорта', desc: 'От вяленого леща к лагеру до шоколада к стауту.', emoji: '🍽️', date: '5 ноября' },
 ];
 
+const pairings = [
+  {
+    id: 'light', label: 'Светлое и лёгкое', emoji: '🌾',
+    keywords: ['лагер', 'пилс', 'вайс', 'светл', 'медовух'],
+    food: 'Вяленый лещ, солёные огурцы, молодой сыр',
+    note: 'Чистый и свежий вкус не перебивает закуску — он её подсвечивает.',
+  },
+  {
+    id: 'hoppy', label: 'Горькое и хмельное', emoji: '🌿',
+    keywords: ['ipa', 'айпа', 'апа', 'apa', 'хмел', 'горьк'],
+    food: 'Гамбургер, острые крылышки, выдержанный чеддер',
+    note: 'Хмелевая горчинка срезает жир и делает каждый кусок интереснее.',
+  },
+  {
+    id: 'dark', label: 'Тёмное и плотное', emoji: '☕',
+    keywords: ['портер', 'стаут', 'тёмн', 'темн', 'шоколад'],
+    food: 'Шоколадный десерт, тушёное мясо, кофе',
+    note: 'Карамель и кофе в эли подробно звучат с сладким и плотным.',
+  },
+  {
+    id: 'fruit', label: 'Кислое и фруктовое', emoji: '🍋',
+    keywords: ['сауэр', 'кисл', 'сидр', 'яблоч', 'фрукт'],
+    food: 'Козлий сыр, устрицы, фруктовый салат',
+    note: 'Кислинка освежает и хорошо работает с солёным и сливочным.',
+  },
+];
+
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quickView, setQuickView] = useState(null);
   const [activeFaq, setActiveFaq] = useState(null);
   const [activeTaste, setActiveTaste] = useState(null);
+  const [activePairing, setActivePairing] = useState(pairings[0].id);
   const [email, setEmail] = useState('');
+  const { addToCart } = useCart();
   const { addNotification } = useNotification();
 
   useEffect(() => {
@@ -113,6 +143,12 @@ export default function Home() {
       return taste.keywords.some(keyword => text.includes(keyword));
     });
   }, [products, activeTaste]);
+
+  const pairing = pairings.find(item => item.id === activePairing) || pairings[0];
+  const pairingProduct = useMemo(() => products.find(product => {
+    const text = `${product.name || ''} ${product.description || ''}`.toLowerCase();
+    return pairing.keywords.some(keyword => text.includes(keyword));
+  }) || products[0], [products, pairing]);
 
   const subscribe = (e) => {
     e.preventDefault();
@@ -298,6 +334,61 @@ export default function Home() {
           <div className="flex gap-2 wrap">
             <Link to="/catalog" className="btn btn-primary btn-sm">Весь каталог <ArrowRight size={16} /></Link>
             <Link to="/contacts" className="btn btn-outline btn-sm">Спросить нас</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= FOOD PAIRINGS ================= */}
+      <section className="section-sm container">
+        <div className="section-head">
+          <span className="eyebrow"><Sparkles size={14} /> Всё о пиве</span>
+          <h2>Гастрономические сочетания</h2>
+          <p>Выберите стиль — подскажем, с чем его пить, и сразу найдём подходящий сорт в каталоге.</p>
+        </div>
+
+        <div className="glass-panel pairing-shell">
+          <div className="pairing-tabs" role="tablist" aria-label="Стили пива">
+            {pairings.map(item => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                className="pairing-tab"
+                aria-selected={activePairing === item.id}
+                onClick={() => setActivePairing(item.id)}
+              >
+                <span role="img" aria-hidden="true">{item.emoji}</span> {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="pairing-body">
+            <div>
+              <span className="eyebrow">{pairing.label}</span>
+              <h3 style={{ fontSize: '1.5rem', margin: '10px 0' }}>{pairing.food}</h3>
+              <p className="muted small" style={{ maxWidth: 520 }}>{pairing.note}</p>
+              <Link to="/blog/3" className="text-button small text-accent">Подробнее о сочетаниях <ArrowRight size={14} /></Link>
+            </div>
+
+            {pairingProduct && (
+              <div className="pairing-product">
+                <img src={productImage(pairingProduct)} alt="" aria-hidden="true" />
+                <div style={{ minWidth: 0 }}>
+                  <strong className="small" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {pairingProduct.name}
+                  </strong>
+                  <span className="tiny muted">{Number(pairingProduct.price).toLocaleString('ru-RU')} ₽</span>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    style={{ marginTop: 8 }}
+                    onClick={() => addToCart(pairingProduct)}
+                  >
+                    В корзину
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

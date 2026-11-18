@@ -108,10 +108,11 @@ export function AuthProvider({ children }) {
 
   // --- ПРОМОКОДЫ ---
   const addPromoToUser = useCallback((promo) => {
-    if (!user?.email) return;
+    if (!user?.email || !promo?.promoCode) return;
     const key = `urechki_promos_${user.email}`;
     const existing = readJson(key, []);
-    localStorage.setItem(key, JSON.stringify([promo, ...existing]));
+    const next = [promo, ...existing.filter((item) => item?.promoCode !== promo.promoCode)];
+    localStorage.setItem(key, JSON.stringify(next.slice(0, 20)));
   }, [user?.email]);
 
   const getUserPromos = useCallback(() => {

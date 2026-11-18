@@ -371,6 +371,7 @@ button { cursor: pointer; }
 .account-menu a:hover, .account-menu button:hover { background: rgba(255,255,255,.06); color: var(--accent); }
 .mobile-menu { overflow: hidden; background: rgba(12,12,14,.98); border-bottom: 1px solid var(--border-accent); }
 .mobile-burger { display: none !important; }
+.mobile-bottom-nav { display: none; }
 @media (max-width: 1180px) { .main-nav { gap: 14px; } .header-search { max-width: 220px; } }
 @media (max-width: 1024px) {
   .desktop-menu { display: none !important; }
@@ -394,6 +395,97 @@ button { cursor: pointer; }
 .marquee-content { display: flex; animation: marquee 26s linear infinite; }
 .marquee-content span { padding-right: 60px; }
 @keyframes marquee { to { transform: translateX(-50%); } }
+
+/* ===== РУЛЕТКА ===== */
+.roulette-progress { display: flex; justify-content: center; gap: 8px; margin-bottom: 22px; }
+.roulette-dot { width: 38px; height: 6px; border-radius: 999px; background: rgba(255,255,255,.12); transition: background .3s, box-shadow .3s; }
+.roulette-dot.used { background: var(--accent); box-shadow: 0 0 12px rgba(var(--accent-rgb), .55); }
+.roulette-stage { position: relative; width: min(390px, 84vw); aspect-ratio: 1; margin: 0 auto; display: grid; place-items: center; }
+.roulette-rim {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: linear-gradient(145deg, #f6e0a6 0%, #9c7429 28%, #6f511b 52%, #e5c77e 76%, #7a5a1e 100%);
+  box-shadow: 0 28px 60px rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.35), inset 0 0 22px rgba(0,0,0,.45);
+}
+.roulette-wheel {
+  position: absolute; inset: 13px; border-radius: 50%; overflow: hidden;
+  background: conic-gradient(
+    #17171b 0deg 60deg, #a87c26 60deg 120deg, #17171b 120deg 180deg,
+    #a87c26 180deg 240deg, #17171b 240deg 300deg, #a87c26 300deg 360deg
+  );
+  border: 4px solid #0c0c0f;
+  box-shadow: inset 0 0 0 7px rgba(255,255,255,.05), inset 0 0 50px rgba(0,0,0,.65);
+}
+.roulette-wheel::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, transparent 49%, rgba(255,255,255,.07) 50%, transparent 52%);
+}
+.roulette-sector {
+  position: absolute; top: 50%; left: 50%; width: 50%; height: 44px;
+  transform-origin: 0% 50%; display: flex; align-items: center; justify-content: center;
+  padding-left: 58px; pointer-events: none;
+}
+.roulette-sector-label {
+  font-family: var(--font-body); font-size: .68rem; font-weight: 900;
+  line-height: 1.18; text-align: center; white-space: pre-line; text-transform: uppercase;
+  letter-spacing: .02em; text-shadow: 0 2px 7px rgba(0,0,0,.75);
+}
+.roulette-pointer {
+  position: absolute; top: -22px; left: 50%; transform: translateX(-50%); z-index: 12;
+  width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent;
+  border-top: 34px solid var(--accent);
+  filter: drop-shadow(0 5px 6px rgba(0,0,0,.6));
+}
+.roulette-hub-wrap { position: absolute; z-index: 15; }
+.roulette-hub {
+  width: 104px; height: 104px; border-radius: 50%; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border: 4px solid #fff1c9; background: radial-gradient(circle at 35% 28%, #f9e3a8, #b78932 58%, #725017);
+  color: #181207; box-shadow: 0 10px 26px rgba(0,0,0,.65), inset 0 2px 6px rgba(255,255,255,.55);
+  cursor: pointer;
+}
+.roulette-hub > span { font-family: var(--font-body); font-size: .62rem; font-weight: 900; letter-spacing: .09em; }
+.roulette-hub:disabled { cursor: not-allowed; filter: grayscale(.35); opacity: .8; }
+.roulette-hub .spin-icon { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.roulette-prize {
+  display: flex; align-items: center; gap: 18px; text-align: left;
+  margin: 30px auto 0; max-width: 420px; padding: 20px 22px;
+  border: 1px solid var(--border-accent); border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), .14), rgba(0,0,0,.25));
+}
+.roulette-prize h2 { margin: 2px 0 8px; font-size: 1.35rem; }
+.roulette-code {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px;
+  border: 1px dashed var(--accent); border-radius: 10px; background: rgba(0,0,0,.25);
+  color: var(--accent); font-family: var(--font-body); font-weight: 900; letter-spacing: .16em; cursor: pointer;
+}
+.roulette-rules { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.roulette-rules div { display: flex; align-items: center; gap: 7px; font-size: .76rem; color: var(--text-dim); }
+.roulette-rules span {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(var(--accent-rgb), .16); color: var(--accent); font-weight: 900;
+}
+
+/* ===== ГАСТРОНОМИЧЕСКИЕ СОЧЕТАНИЯ ===== */
+.pairing-shell { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 24px; }
+.pairing-tabs { display: flex; flex-direction: column; gap: 8px; }
+.pairing-tab {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+  background: rgba(255,255,255,.03); color: var(--text);
+  font-family: var(--font-body); font-size: .86rem; font-weight: 800; text-align: left; cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+.pairing-tab:hover { border-color: var(--border-accent); }
+.pairing-tab[aria-selected="true"] {
+  border-color: var(--accent); background: rgba(var(--accent-rgb), .12); color: var(--accent);
+}
+.pairing-body { display: grid; grid-template-columns: 1fr 250px; gap: 24px; align-items: center; }
+.pairing-product {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: rgba(0,0,0,.2);
+}
+.pairing-product img { width: 74px; height: 74px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
 
 /* ===== ПРОЧЕЕ ===== */
 .nav-link { transition: color var(--transition); position: relative; }
@@ -445,6 +537,47 @@ button { cursor: pointer; }
   .modal { border-radius: 18px 18px 0 0; max-height: 92vh; }
   .btn { padding: 12px 16px; }
   section { padding-left: 0 !important; padding-right: 0 !important; }
+
+  main { padding-bottom: 72px; }
+  footer { margin-bottom: 62px; }
+  .social-proof { display: none !important; }
+  .chat-fab { bottom: 84px !important; right: 14px !important; }
+  .chat-panel { bottom: 148px !important; right: 14px !important; height: min(520px, calc(100dvh - 210px)) !important; }
+  .mobile-bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9800;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+    background: rgba(12, 12, 14, .96);
+    border-top: 1px solid var(--border-accent);
+    backdrop-filter: blur(14px);
+  }
+  .mobile-bottom-item {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 2px; border: 0; background: transparent; color: var(--text-dim);
+    font-family: var(--font-body); font-size: .64rem; font-weight: 700; text-decoration: none;
+  }
+  .mobile-bottom-item.active { color: var(--accent); }
+  .mobile-bottom-icon-wrap { position: relative; display: flex; }
+  .mobile-bottom-badge {
+    position: absolute; top: -7px; right: -11px; min-width: 17px; height: 17px;
+    padding: 0 4px; border-radius: 999px; background: var(--accent); color: var(--on-accent);
+    font-size: .6rem; line-height: 17px; text-align: center;
+  }
+  .pairing-shell { grid-template-columns: 1fr; padding: 18px; gap: 16px; }
+  .pairing-tabs {
+    flex-direction: row; overflow-x: auto; padding-bottom: 6px;
+    scroll-snap-type: x proximity; scrollbar-width: none;
+  }
+  .pairing-tabs::-webkit-scrollbar { display: none; }
+  .pairing-tab { flex: 0 0 auto; white-space: nowrap; scroll-snap-align: start; }
+  .pairing-body { grid-template-columns: 1fr; }
+  .roulette-stage { width: min(330px, 88vw); }
+  .roulette-sector { height: 38px; padding-left: 48px; }
+  .roulette-sector-label { font-size: .58rem; }
+  .roulette-hub { width: 88px; height: 88px; }
+  .roulette-hub > span { font-size: .55rem; }
+  .roulette-rules { gap: 10px; }
+  .roulette-rules div { font-size: .7rem; }
 }
 /* ===== НАСТРОЙКИ ИНТЕРФЕЙСА ===== */
 .settings-section { display: flex; flex-direction: column; gap: 12px; }

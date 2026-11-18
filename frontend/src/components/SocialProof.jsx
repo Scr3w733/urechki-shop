@@ -74,7 +74,7 @@ export default function SocialProof() {
           role="status"
           aria-live="polite"
           aria-label="Недавняя покупка"
-          className="glass-panel"
+          className="glass-panel social-proof"
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
           animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
           exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}

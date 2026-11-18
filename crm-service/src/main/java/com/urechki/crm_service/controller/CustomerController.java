@@ -10,9 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -23,6 +28,16 @@ public class CustomerController {
 
     @Value("${app.admin.email:admin@urechki.ru}")
     private String adminEmail;
+
+    private static final int PROMO_SPINS_PER_DAY = 3;
+    // Только коды, которые реально понимает order-service.
+    private static final String[] PROMO_PRIZES = {
+            "Скидка 5%", "Скидка 10%", "Скидка 15%", "Промокод 500р", "Скидка для своих", "Лёгкая скидка"
+    };
+    private static final String[] PROMO_CODES = {
+            "BEER5", "BEER10", "BEER15", "CASH500", "URE4KA", "BEER5"
+    };
+    private final ConcurrentMap<String, AtomicInteger> promoSpins = new ConcurrentHashMap<>();
 
     public CustomerController(CustomerRepository customerRepository) {
         this.customerRepository = customerRepository;
@@ -130,21 +145,61 @@ public class CustomerController {
         return CustomerResponse.from(customerRepository.save(customer));
     }
 
+    /**
+     * Предпросмотр следующего приза без списания попытки.
+     */
     @GetMapping("/promo")
     public Map<String, Object> getPromo(@RequestParam(required = false) String email) {
-        String[] prizes = {"Скидка 5%", "Бесплатная доставка", "Скидка 10%", "Бокал в подарок", "Скидка 15%", "Промокод 500р"};
-        String[] promoCodes = {"BEER5", "FREEDEL", "BEER10", "GLASS", "BEER15", "CASH500"};
+        String normalized = normalizeEmail(email);
+        if (normalized == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Укажите email клиента");
+        }
+        int used = spinsUsed(normalized, false);
+        return prizeResponse(normalized, used + 1, used, false);
+    }
 
-        // Для авторизованного пользователя результат стабилен — так promo можно переиграть повторным запросом.
-        int randomIndex = email == null || email.isBlank()
-                ? (int) (Math.random() * prizes.length)
-                : Math.abs(email.hashCode()) % prizes.length;
+    /**
+     * Одно вращение: сервер сам определяет приз и списывает одну из 3 попыток в день.
+     */
+    @PostMapping("/promo/claim")
+    public Map<String, Object> claimPromo(@RequestBody(required = false) Map<String, String> body) {
+        String normalized = normalizeEmail(body == null ? null : body.get("email"));
+        if (normalized == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Укажите email клиента");
+        }
+        int used = spinsUsed(normalized, true);
+        if (used >= PROMO_SPINS_PER_DAY) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Лимит попыток на сегодня исчерпан. Возвращайтесь завтра.");
+        }
+        int attempt = used + 1;
+        return prizeResponse(normalized, attempt, attempt, true);
+    }
 
-        return Map.of(
-                "prizeIndex", randomIndex,
-                "prize", prizes[randomIndex],
-                "promoCode", promoCodes[randomIndex]
-        );
+    private int spinsUsed(String email, boolean cleanup) {
+        String today = LocalDate.now().toString();
+        if (cleanup) {
+            // Старые ключи больше не нужны — не даём карте расти бесконечно.
+            promoSpins.keySet().removeIf(key -> !key.endsWith("|" + today));
+        }
+        String key = email + "|" + today;
+        return promoSpins.computeIfAbsent(key, ignored -> new AtomicInteger()).get();
+    }
+
+    private Map<String, Object> prizeResponse(String email, int attempt, int used, boolean consume) {
+        String today = LocalDate.now().toString();
+        int index = Math.abs((email + "|" + today + "|" + attempt).hashCode()) % PROMO_PRIZES.length;
+        if (consume) {
+            promoSpins.computeIfAbsent(email + "|" + today, ignored -> new AtomicInteger()).incrementAndGet();
+        }
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("prizeIndex", index);
+        response.put("prize", PROMO_PRIZES[index]);
+        response.put("promoCode", PROMO_CODES[index]);
+        response.put("spinsUsed", used);
+        response.put("spinsLimit", PROMO_SPINS_PER_DAY);
+        response.put("spinsLeft", Math.max(0, PROMO_SPINS_PER_DAY - used));
+        return response;
     }
 
     private String normalizeEmail(String email) {
