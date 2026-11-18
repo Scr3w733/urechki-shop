@@ -1,0 +1,10 @@
+.git
+.agent-cache
+node_modules
+**/node_modules
+**/target
+frontend/dist
+mobile
+screenshots
+*.log
+.env
