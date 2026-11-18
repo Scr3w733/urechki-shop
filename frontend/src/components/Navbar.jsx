@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart3, Beer, ShoppingCart, User, Menu, X, Search, Settings, Smartphone, ChevronDown, Gift, Heart, Truck, Server } from 'lucide-react';
+import {
+  BarChart3, Beer, ShoppingCart, User, UserRound, Menu, X, Search, Settings, Smartphone,
+  ChevronDown, Gift, Heart, Truck, Server, Home, LayoutGrid, Info, Factory, Newspaper,
+  HelpCircle, MapPin, Shirt, MessageSquare,
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
@@ -45,6 +49,20 @@ export default function Navbar() {
   }, [location.pathname]);
 
   useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
     const onKey = (e) => {
       if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
         e.preventDefault();
@@ -65,6 +83,48 @@ export default function Navbar() {
     { to: '/favorites', label: 'Избранное', icon: Heart },
     { to: '/status', label: 'Статус', icon: Server },
     ...(isOwner ? [{ to: '/analytics', label: 'Аналитика', icon: BarChart3 }] : []),
+  ];
+
+  const drawerGroups = [
+    {
+      title: 'Магазин',
+      items: [
+        { to: '/', label: 'Главная', icon: Home, end: true },
+        { to: '/catalog', label: 'Каталог', icon: LayoutGrid },
+        { to: '/favorites', label: 'Избранное', icon: Heart },
+      ],
+    },
+    {
+      title: 'О пиве',
+      items: [
+        { to: '/about', label: 'О нас', icon: Info },
+        { to: '/production', label: 'Производство', icon: Factory },
+        { to: '/reviews', label: 'Отзывы', icon: MessageSquare },
+        { to: '/blog', label: 'Блог', icon: Newspaper },
+      ],
+    },
+    {
+      title: 'Акции и сервисы',
+      items: [
+        { to: '/roulette', label: 'Рулетка', icon: Gift },
+        { to: '/merch', label: 'Мерч', icon: Shirt },
+        { to: '/loyalty', label: 'Бонусы', icon: Gift },
+        { to: '/track', label: 'Отследить', icon: Truck },
+        { to: '/status', label: 'Статус', icon: Server },
+        { to: '/app', label: 'Приложение', icon: Smartphone },
+      ],
+    },
+    {
+      title: 'Помощь',
+      items: [
+        { to: '/faq', label: 'Вопросы и ответы', icon: HelpCircle },
+        { to: '/contacts', label: 'Контакты', icon: MapPin },
+      ],
+    },
+    ...(isAdmin ? [{
+      title: 'Управление',
+      items: [{ to: '/admin', label: 'Админка', icon: Settings }],
+    }] : []),
   ];
 
   const submitSearch = (e) => {
@@ -174,15 +234,92 @@ export default function Navbar() {
 
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div className="mobile-menu" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-            <div className="container stack" style={{ padding: '18px 0' }}>
-              {[...links, ...serviceLinks, { to: '/roulette', label: 'Рулетка' }, { to: '/merch', label: 'Мерч' }, { to: '/app', label: 'Приложение' }, { to: '/reviews', label: 'Отзывы' }, { to: '/contacts', label: 'Контакты' }].map(link => (
-                <Link key={link.to} to={link.to} className="nav-link">{link.label}</Link>
-              ))}
-              {isAdmin && <Link to="/admin" className="nav-link text-accent">Админка</Link>}
-              <button className="btn btn-outline" onClick={() => { setMobileOpen(false); setIsSettingsOpen(true); }}><Settings size={17} /> Настройки</button>
-            </div>
-          </motion.div>
+          <motion.div
+            key="nav-backdrop"
+            className="drawer-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.aside
+            key="nav-drawer"
+              className="nav-drawer"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+              aria-label="Меню разделов"
+            >
+              <div className="drawer-header">
+                <h2><Beer size={22} /> Разделы</h2>
+                <button className="icon-btn" onClick={() => setMobileOpen(false)} aria-label="Закрыть меню">
+                  <X size={22} />
+                </button>
+              </div>
+
+              <div className="drawer-body">
+                <form
+                  className="nav-drawer-search"
+                  role="search"
+                  onSubmit={(event) => { submitSearch(event); setMobileOpen(false); }}
+                >
+                  <Search size={17} />
+                  <input
+                    value={search}
+                    onChange={event => setSearch(event.target.value)}
+                    placeholder="Найти пиво, закуски…"
+                    aria-label="Поиск по каталогу"
+                  />
+                </form>
+
+                {drawerGroups.map(group => (
+                  <div className="nav-drawer-group" key={group.title}>
+                    <div className="nav-drawer-title">{group.title}</div>
+                    {group.items.map(({ to, label, icon: Icon, end }) => (
+                      <NavLink
+                        key={to}
+                        to={to}
+                        end={end}
+                        className={({ isActive }) => `nav-drawer-link ${isActive ? 'active' : ''}`}
+                      >
+                        <Icon size={18} /> {label}
+                      </NavLink>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              <div className="drawer-footer">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setMobileOpen(false); openCart(); }}
+                >
+                  <ShoppingCart size={18} /> Корзина
+                  {getCount() > 0 && <span className="nav-drawer-badge">{getCount()}</span>}
+                </button>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    if (user) navigate('/profile');
+                    else setIsAuthOpen(true);
+                  }}
+                >
+                  <UserRound size={18} /> {user ? 'Мой профиль' : 'Войти'}
+                </button>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => { setMobileOpen(false); setIsSettingsOpen(true); }}
+                >
+                  <Settings size={18} /> Настройки
+                </button>
+              </div>
+          </motion.aside>
         )}
       </AnimatePresence>
 

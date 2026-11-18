@@ -17,7 +17,6 @@ import ScrollProgress from './components/ScrollProgress';
 import CookieBanner from './components/CookieBanner';
 import AppBanner from './components/AppBanner';
 import CommandPalette from './components/CommandPalette';
-import MobileBottomNav from './components/MobileBottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
@@ -229,7 +228,6 @@ export default function App() {
               <AppBanner />
               <main id="main-content"><AnimatedRoutes /></main>
               <Footer />
-              <MobileBottomNav />
               <SocialProof />
               <ChatBot />
               <CookieBanner />

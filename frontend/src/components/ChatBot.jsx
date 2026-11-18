@@ -115,7 +115,7 @@ export default function ChatBot() {
     <>
       <motion.button
         type="button"
-        className="btn btn-primary chat-fab"
+        className="btn btn-primary"
         onClick={() => setIsOpen((open) => !open)}
         whileHover={reduceMotion ? undefined : { scale: 1.04 }}
         whileTap={reduceMotion ? undefined : { scale: 0.96 }}
@@ -141,7 +141,7 @@ export default function ChatBot() {
           <motion.section
             {...panelAnimation}
             aria-label="Чат с помощником"
-            className="glass-panel chat-panel"
+            className="glass-panel"
             style={{
               position: 'fixed',
               right: 20,
