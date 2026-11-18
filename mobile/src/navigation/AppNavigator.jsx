@@ -17,6 +17,11 @@ import OrdersScreen from '../screens/OrdersScreen';
 import LoyaltyScreen from '../screens/LoyaltyScreen';
 import TrackingScreen from '../screens/TrackingScreen';
 import LoginScreen from '../screens/LoginScreen';
+import PromoScreen from '../screens/PromoScreen';
+import AnalyticsScreen from '../screens/AnalyticsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import RecentlyViewedScreen from '../screens/RecentlyViewedScreen';
+import AboutScreen from '../screens/AboutScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -87,6 +92,11 @@ function ProfileStack() {
       <Stack.Screen name="Loyalty" component={LoyaltyScreen} options={{ title: 'Бонусы' }} />
       <Stack.Screen name="Tracking" component={TrackingScreen} options={{ title: 'Отследить' }} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Избранное' }} />
+      <Stack.Screen name="RecentlyViewed" component={RecentlyViewedScreen} options={{ title: 'Недавно смотрели' }} />
+      <Stack.Screen name="Promo" component={PromoScreen} options={{ title: 'Акции и промокоды' }} />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'Аналитика' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Уведомления' }} />
+      <Stack.Screen name="About" component={AboutScreen} options={{ title: 'О приложении' }} />
     </Stack.Navigator>
   );
 }

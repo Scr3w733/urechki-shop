@@ -174,11 +174,13 @@ public class MobileGatewayService {
 
         StringBuilder path = new StringBuilder("/api/products");
         List<String> params = new ArrayList<>();
+        // RestTemplate сам кодирует URI-шаблон: ручная кодировка здесь даёт двойной
+        // escape (%25D0...) и каталог возвращает пустой список для кириллицы.
         if (category != null && !category.isBlank()) {
-            params.add("category=" + encode(category));
+            params.add("category=" + category);
         }
         if (search != null && !search.isBlank()) {
-            params.add("search=" + encode(search));
+            params.add("search=" + search);
         }
         if (!params.isEmpty()) {
             path.append('?').append(String.join("&", params));

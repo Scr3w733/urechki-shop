@@ -112,6 +112,32 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       <View style={styles.block}>
+        <SectionTitle title="Быстрые действия" subtitle="Часто нужные разделы в один тап" />
+        <View style={styles.quickGrid}>
+          <QuickAction
+            icon="pricetags-outline"
+            label="Акции"
+            onPress={() => navigation.navigate('Profile', { screen: 'Promo' })}
+          />
+          <QuickAction
+            icon="eye-outline"
+            label="Недавно"
+            onPress={() => navigation.navigate('Profile', { screen: 'RecentlyViewed' })}
+          />
+          <QuickAction
+            icon="gift-outline"
+            label="Бонусы"
+            onPress={() => navigation.navigate('Profile', { screen: 'Loyalty' })}
+          />
+          <QuickAction
+            icon="bar-chart-outline"
+            label="Аналитика"
+            onPress={() => navigation.navigate('Profile', { screen: 'Analytics' })}
+          />
+        </View>
+      </View>
+
+      <View style={styles.block}>
         <SectionTitle title="Почему мы" />
         <View style={styles.features}>
           <Feature icon="bicycle-outline" title="Доставка за 2 часа" text="По городу — в день заказа" />
@@ -130,6 +156,17 @@ function Feature({ icon, title, text }) {
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureText}>{text}</Text>
     </Card>
+  );
+}
+
+function QuickAction({ icon, label, onPress }) {
+  return (
+    <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={styles.quickAction}>
+      <View style={styles.quickIcon}>
+        <Ionicons name={icon} size={20} color={colors.accent} />
+      </View>
+      <Text style={styles.quickLabel}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -157,6 +194,18 @@ const styles = StyleSheet.create({
   categoryText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 13 },
   categoryTextActive: { color: colors.onAccent },
   muted: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  quickAction: {
+    width: '47%',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: 14,
+    gap: 10,
+  },
+  quickIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { color: colors.text, fontFamily: fonts.bodySemi, fontSize: 13 },
   features: { gap: 10 },
   feature: { gap: 6 },
   featureTitle: { color: colors.text, fontFamily: fonts.bodyBold, fontSize: 14 },

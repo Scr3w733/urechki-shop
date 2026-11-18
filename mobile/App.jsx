@@ -9,6 +9,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
+import { RecentlyViewedProvider } from './src/context/RecentlyViewedContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { colors } from './src/theme';
 
@@ -30,8 +31,10 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <StatusBar style="light" backgroundColor={colors.bg} />
-        <AppNavigator />
+        <RecentlyViewedProvider>
+          <StatusBar style="light" backgroundColor={colors.bg} />
+          <AppNavigator />
+        </RecentlyViewedProvider>
       </CartProvider>
     </AuthProvider>
   );

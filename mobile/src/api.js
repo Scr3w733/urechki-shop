@@ -96,6 +96,11 @@ export const api = {
       return null;
     }
   },
+  analyticsSummary: () => request(`${ENDPOINTS.analytics}/summary`),
+  analyticsFunnel: () => request(`${ENDPOINTS.analytics}/funnel`),
+  analyticsRecent: (limit = 20) => request(`${ENDPOINTS.analytics}/recent${query({ limit })}`),
+
+  notifications: (email) => request(`${ENDPOINTS.notifications}${query({ email })}`),
 };
 
 export const asArray = (payload, keys = []) => {

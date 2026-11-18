@@ -25,6 +25,11 @@ export default function ProfileScreen({ navigation }) {
     { label: 'Бонусы и уровень', icon: 'gift-outline', route: 'Loyalty' },
     { label: 'Отследить доставку', icon: 'bicycle-outline', route: 'Tracking' },
     { label: 'Избранное', icon: 'heart-outline', route: 'Favorites' },
+    { label: 'Недавно смотрели', icon: 'eye-outline', route: 'RecentlyViewed' },
+    { label: 'Акции и промокоды', icon: 'pricetags-outline', route: 'Promo' },
+    { label: 'Уведомления', icon: 'mail-outline', route: 'Notifications' },
+    { label: 'Аналитика', icon: 'bar-chart-outline', route: 'Analytics' },
+    { label: 'О приложении', icon: 'information-circle-outline', route: 'About' },
   ];
 
   return (

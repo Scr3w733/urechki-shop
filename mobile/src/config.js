@@ -20,9 +20,18 @@ export const ENDPOINTS = {
   tracking: `${API_ORIGIN}/api/tracking`,
   favorites: `${API_ORIGIN}/api/favorites`,
   analytics: `${API_ORIGIN}/api/analytics`,
+  notifications: `${API_ORIGIN}/api/notifications`,
 };
 
 export const PROMO_CODES = ['URE4KA', 'BEER5', 'BEER10', 'BEER15', 'CASH500'];
+
+export const PROMO_DETAILS = {
+  URE4KA: { title: 'Промокод сообщества', description: 'Скидка для своих — введите при оформлении заказа', badge: 'Хит' },
+  BEER5: { title: 'Лёгкая скидка', description: 'Небольшая скидка на первый заказ в приложении', badge: '5%' },
+  BEER10: { title: 'Пивная десятка', description: 'Скидка на заказ от двух позиций', badge: '10%' },
+  BEER15: { title: 'Крафтовый уровень', description: 'Максимальная скидка на пиво и наборы', badge: '15%' },
+  CASH500: { title: 'Скидка 500 ₽', description: 'Крупная скидка на большой заказ', badge: '500 ₽' },
+};
 
 export const APP_INFO = {
   name: 'У Речушки',

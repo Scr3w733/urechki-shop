@@ -5,13 +5,16 @@ import { api, asArray } from '../api';
 import { colors, fonts, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { Badge, Button, Card, Loading, Price, ProductArt, Rating, SectionTitle } from '../components/ui';
 
 export default function ProductScreen({ route, navigation }) {
   const id = route?.params?.id;
   const { user } = useAuth();
   const cart = useCart();
+  const recent = useRecentlyViewed();
   const [product, setProduct] = useState(null);
+  const [similar, setSimilar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -23,6 +26,16 @@ export default function ProductScreen({ route, navigation }) {
     try {
       const payload = await api.product(id);
       setProduct(payload);
+      recent.add(payload);
+      api.trackEvent({ type: 'screen_view', screen: 'product' });
+      try {
+        const related = await api.catalog({ category: payload.category, limit: 30 });
+        setSimilar(asArray(related, ['products', 'items'])
+          .filter((item) => String(item.id) !== String(id))
+          .slice(0, 4));
+      } catch {
+        setSimilar([]);
+      }
       api.trackEvent({ type: 'view_product', productId: Number(id), amount: Number(payload?.price) || null });
       if (user?.id) {
         try {
@@ -37,7 +50,7 @@ export default function ProductScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [id, user?.id]);
+  }, [id, user?.id, recent.add]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -120,6 +133,27 @@ export default function ProductScreen({ route, navigation }) {
         </View>
       </View>
 
+      {similar.length > 0 && (
+        <View style={styles.block}>
+          <SectionTitle title="Похожие товары" subtitle="Из этой же категории" />
+          {similar.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              activeOpacity={0.85}
+              onPress={() => navigation.setParams({ id: item.id, name: item.name })}
+              style={styles.similarRow}
+            >
+              <ProductArt product={item} size="small" />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text numberOfLines={2} style={styles.similarName}>{item.name}</Text>
+                <Price value={item.price} style={styles.similarPrice} />
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.dim} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       <Button
         disabled={!inStock}
         icon="cart-outline"
@@ -154,4 +188,17 @@ const styles = StyleSheet.create({
   quantityRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   quantityButton: { width: 42, height: 42, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   quantityValue: { color: colors.text, fontFamily: fonts.displayMedium, fontSize: 20, minWidth: 34, textAlign: 'center' },
+  similarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: 10,
+    marginBottom: 9,
+  },
+  similarName: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18 },
+  similarPrice: { fontSize: 14, marginTop: 4 },
 });
