@@ -33,6 +33,12 @@ public class CustomerController {
         return customerRepository.findAll().stream().map(CustomerResponse::from).toList();
     }
 
+    /** Единая проверка жизни сервиса для страницы состояния платформы. */
+    @GetMapping("/health")
+    public Map<String, Object> health() {
+        return Map.of("status", "ok", "service", "crm-service", "customers", customerRepository.count());
+    }
+
     @GetMapping("/{id}")
     public CustomerResponse getCustomerById(@PathVariable Long id) {
         return fromOrThrow(id);

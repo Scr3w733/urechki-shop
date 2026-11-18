@@ -101,6 +101,33 @@ export const getMobileProfile = (id) => get(`/api/mobile/profile/${encodeURIComp
 
 export const getCatalogProducts = () => get('/api/products');
 
+/* ------------------------ Состояние платформы --------------------------- */
+
+/** Все микросервисы проверяются через один nginx-порт — так же, как это делает браузер. */
+export const PLATFORM_SERVICES = [
+  { id: 'catalog', name: 'Каталог', path: '/api/products/health', description: 'Товары, цены, остатки и категории' },
+  { id: 'crm', name: 'Клиенты', path: '/api/customers/health', description: 'Регистрация, вход, роли и бонусы' },
+  { id: 'orders', name: 'Заказы', path: '/api/orders/health', description: 'Оформление и история заказов' },
+  { id: 'payments', name: 'Оплата', path: '/api/payments/health', description: 'Проведение платежей и возвраты' },
+  { id: 'notifications', name: 'Уведомления', path: '/api/notifications/health', description: 'История писем клиентам' },
+  { id: 'loyalty', name: 'Лояльность', path: '/api/loyalty/health', description: 'Уровни, кэшбэк и баллы' },
+  { id: 'tracking', name: 'Доставка', path: '/api/tracking/health', description: 'Отправления и статусы' },
+  { id: 'favorites', name: 'Избранное', path: '/api/favorites/health', description: 'Синхронизация сайта и приложения' },
+  { id: 'analytics', name: 'Аналитика', path: '/api/analytics/health', description: 'События, сводка и воронка' },
+  { id: 'mobile', name: 'Мобильный шлюз', path: '/api/mobile/health', description: 'API для React Native приложения' },
+];
+
+/** Проверяет все сервисы параллельно; падение одного не ломает остальные. */
+export const checkPlatformServices = async () => Promise.all(PLATFORM_SERVICES.map(async (service) => {
+  const startedAt = Date.now();
+  try {
+    const data = await get(service.path);
+    return { ...service, online: true, data, latency: Date.now() - startedAt };
+  } catch (error) {
+    return { ...service, online: false, error: error.message, latency: Date.now() - startedAt };
+  }
+}));
+
 export default {
   normalizeApiError,
   getLoyaltyHealth, getLoyaltyAccount, quoteLoyalty, accrueLoyalty, getLoyaltyHistory,
@@ -109,4 +136,5 @@ export default {
   getAnalyticsHealth, getAnalyticsSummary, getAnalyticsFunnel, getAnalyticsRecent, trackEvent,
   getMobileHealth, getMobileHome, getMobileCatalog, getMobileProfile,
   getCatalogProducts,
+  PLATFORM_SERVICES, checkPlatformServices,
 };

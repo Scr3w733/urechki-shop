@@ -1,12 +1,12 @@
 # mobile-gateway-service
 
-API-слой для будущего React Native приложения «Урёчки». Сервис не хранит данные сам, а агрегирует ответы
-существующих и планируемых микросервисов, возвращая мобильному клиенту удобные JSON-структуры.
+API-слой для React Native приложения «Урёчки». Сервис не хранит данные сам, а агрегирует ответы
+остальных микросервисов, возвращая мобильному клиенту удобные JSON-структуры.
 
 **Порт:** `8090` · **Базовый путь:** `/api/mobile` · **Пакет:** `com.urechki.mobile_gateway`
 
-> Сервис создан отдельно и намеренно **не добавлен** в `docker-compose.yml`, а также не меняет фронтенд и
-> другие сервисы. Подключение к-compose — задача следующего этапа.
+> Сервис **подключён** к общему `docker-compose.yml`, и мобильное приложение использует именно его.
+> Все запросы приложения идут через nginx сайта (`/api/mobile/*`).
 
 ## Технологии
 
@@ -18,17 +18,25 @@ API-слой для будущего React Native приложения «Урё�
 
 ## Сборка и запуск
 
+Через Docker (рекомендуемый способ):
+
+```powershell
+docker compose up -d --build mobile-gateway-service
+curl http://localhost/api/mobile/health
+```
+
+Локально:
+
 ```powershell
 cd mobile-gateway-service
 mvn -B -ntp package
 java -jar target/mobile-gateway-service-0.0.1-SNAPSHOT.jar
-```
-
-Проверка:
-
-```powershell
 curl http://localhost:8090/api/mobile/health
 ```
+
+> Исправление: параметры запроса (`category`, `search`) кодируются один раз. Раньше двойное URL-encoding
+> ломало поиск по кириллице; сейчас `/api/mobile/catalog?search=IPA` и поиск по русским названиям
+> возвращают корректные `products` и `total`.
 
 ## Эндпоинты
 
@@ -59,10 +67,10 @@ curl http://localhost:8090/api/mobile/health
   "featuredProducts": [{ "id": 1, "name": "Пиво IPA", "inStock": true, "price": "199.00" }],
   "loyaltyTeaser": {
     "available": true,
-    "title": "Уровень Серебряный",
+    "title": "Уровень Постоянный",
     "message": "У вас 340 бонусов — оплачивайте ими заказы",
     "points": "340",
-    "tier": "Серебряный",
+    "tier": "Постоянный",
     "error": null
   },
   "features": [{ "id": "catalog", "title": "Каталог", "description": "Сотни сортов с поиском и фильтрами" }]

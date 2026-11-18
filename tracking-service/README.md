@@ -1,6 +1,6 @@
 # tracking-service — отслеживание доставки
 
-Небольшой Spring Boot-микросервис для будущего web- и мобильного приложения «У Речушки».
+Spring Boot-микросервис сайта и мобильного приложения «У Речушки».
 Хранит отправления (shipments) и историю событий по ним (tracking events), отдаёт статус,
 прогресс и человекочитаемую подпись статуса.
 
@@ -14,8 +14,8 @@
 - `eta` при создании — ориентир «через 2 дня», а не расчёт по маршруту или обещание часа доставки.
 - Статусы приходят через `PATCH` от оператора или другого сервиса. Сам сервис их не угадывает.
 - `progressPercent` — условная шкала для интерфейса, а не процент пройденного пути.
-- CORS сейчас открыт для всех источников: это временно, пока нет рабочего фронтенда.
-- Сервис намеренно **не добавлен** в `docker-compose.yml`: его запуск поднимается отдельно.
+- CORS открыт для всех источников — это учебное демо с локальным фронтендом и мобильным приложением.
+- Сервис **подключён** к общему `docker-compose.yml` и поднимается вместе со всем стеком.
 
 ## Технологии и запуск
 
@@ -31,17 +31,18 @@ Spring Boot 4.1.2, Java 25, Spring WebMVC, Spring Data JPA, PostgreSQL, Lombok.
 | `SPRING_DATASOURCE_USERNAME` | `admin` |
 | `SPRING_DATASOURCE_PASSWORD` | `password` |
 
+Через Docker (рекомендуемый способ):
+
+```powershell
+docker compose up -d --build tracking-service
+curl http://localhost/api/tracking/health
+```
+
 Локально (нужен доступный PostgreSQL; адрес `db` заменяется на свой):
 
 ```bash
 cd tracking-service
 mvn spring-boot:run
-```
-
-Сборка образа (по желанию, в compose пока не прописано):
-
-```bash
-docker build -t urechki-tracking-service ./tracking-service
 ```
 
 Таблицы `shipments` и `tracking_events` создаются/обновляются автоматически

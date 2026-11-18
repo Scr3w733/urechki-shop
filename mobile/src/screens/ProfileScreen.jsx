@@ -13,8 +13,19 @@ export default function ProfileScreen({ navigation }) {
         <EmptyState
           icon="person-outline"
           title="Вы не вошли"
-          description="Войдите, чтобы видеть бонусы, заказы и избранное. Каталог доступен без входа."
-          action={<Button onPress={() => navigation.navigate('Login')}>Войти или зарегистрироваться</Button>}
+          description="Войдите, чтобы видеть бонусы, заказы и избранное. Каталог и состояние сервисов доступны без входа."
+          action={(
+            <View style={styles.authActions}>
+              <Button onPress={() => navigation.navigate('Login')}>Войти или зарегистрироваться</Button>
+              <Button
+                variant="outline"
+                icon="pulse-outline"
+                onPress={() => navigation.navigate('ServiceStatus')}
+              >
+                Состояние сервисов
+              </Button>
+            </View>
+          )}
         />
       </View>
     );
@@ -30,6 +41,7 @@ export default function ProfileScreen({ navigation }) {
     { label: 'Уведомления', icon: 'mail-outline', route: 'Notifications' },
     { label: 'Аналитика', icon: 'bar-chart-outline', route: 'Analytics' },
     { label: 'О приложении', icon: 'information-circle-outline', route: 'About' },
+    { label: 'Состояние сервисов', icon: 'pulse-outline', route: 'ServiceStatus' },
   ];
 
   return (
@@ -87,6 +99,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 18, paddingBottom: 36 },
   centered: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', padding: 18 },
+  authActions: { gap: 10, marginTop: 16 },
   head: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: colors.onAccent, fontFamily: fonts.displayMedium, fontSize: 24 },

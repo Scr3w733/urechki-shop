@@ -76,6 +76,12 @@ public class ProductController {
         return result;
     }
 
+    /** Единая проверка жизни сервиса для страницы состояния платформы. */
+    @GetMapping("/health")
+    public Map<String, Object> health() {
+        return Map.of("status", "ok", "service", "catalog-service", "products", productRepository.count());
+    }
+
     @GetMapping("/categories")
     public Set<String> getCategories() {
         Set<String> categories = new LinkedHashSet<>();

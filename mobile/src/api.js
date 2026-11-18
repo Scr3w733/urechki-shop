@@ -1,4 +1,4 @@
-import { ENDPOINTS } from './config';
+import { API_ORIGIN, ENDPOINTS, PLATFORM_SERVICES } from './config';
 
 /**
  * Тонкий HTTP-клиент: всегда JSON, понятные русские ошибки, таймаут и
@@ -101,6 +101,17 @@ export const api = {
   analyticsRecent: (limit = 20) => request(`${ENDPOINTS.analytics}/recent${query({ limit })}`),
 
   notifications: (email) => request(`${ENDPOINTS.notifications}${query({ email })}`),
+
+  /** Проверка всех микросервисов: ошибка одного не ломает проверку остальных. */
+  checkPlatformServices: async () => Promise.all(PLATFORM_SERVICES.map(async (service) => {
+    const started = Date.now();
+    try {
+      const data = await request(`${API_ORIGIN}${service.path}`, { timeout: 6000 });
+      return { ...service, online: true, data, latency: Date.now() - started };
+    } catch (error) {
+      return { ...service, online: false, error: error.message, latency: Date.now() - started };
+    }
+  })),
 };
 
 export const asArray = (payload, keys = []) => {
