@@ -1,0 +1,15 @@
+# Замените example.com на свой домен. Caddy сам выпустит и обновит
+# сертификат Let's Encrypt, а трафик проксирует на nginx проекта (порт 80).
+example.com {
+    encode zstd gzip
+
+    reverse_proxy 127.0.0.1:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}

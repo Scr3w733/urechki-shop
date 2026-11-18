@@ -40,6 +40,21 @@ export const PLATFORM_SERVICES = [
 
 export const PROMO_CODES = ['URE4KA', 'BEER5', 'BEER10', 'BEER15', 'CASH500'];
 
+// Ориентировочный расчёт для интерфейса. Итоговую сумму всегда подтверждает
+// order-service — правила продублированы здесь только чтобы не удивлять
+// покупателя цифрами в корзине и на экране оформления.
+export function promoDiscountFor(code, amount) {
+  const base = Math.max(0, Number(amount) || 0);
+  switch (String(code || '').trim().toUpperCase()) {
+    case 'URE4KA':
+    case 'BEER5': return base * 0.05;
+    case 'BEER10': return base * 0.10;
+    case 'BEER15': return base * 0.15;
+    case 'CASH500': return Math.min(base, 500);
+    default: return 0;
+  }
+}
+
 export const PROMO_DETAILS = {
   URE4KA: { title: 'Промокод сообщества', description: 'Скидка для своих — введите при оформлении заказа', badge: 'Хит' },
   BEER5: { title: 'Лёгкая скидка', description: 'Небольшая скидка на первый заказ в приложении', badge: '5%' },

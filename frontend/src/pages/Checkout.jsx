@@ -16,6 +16,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { categoryEmoji, formatPrice } from '../utils/product';
+import { createShipment } from '../services/platformApi';
 import EmptyState from '../components/EmptyState';
 
 const paymentMethods = [
@@ -36,6 +37,7 @@ const steps = ['Данные доставки', 'Оплата', 'Подтвер�
 // Скидки совпадают с расчётом на сервере (order-service).
 const promoPercent = (code) => {
   switch ((code || '').trim().toUpperCase()) {
+    case 'URE4KA':
     case 'BEER5': return 0.05;
     case 'BEER10': return 0.10;
     case 'BEER15': return 0.15;
@@ -308,12 +310,25 @@ export default function Checkout() {
         });
       });
 
+      let shipmentWarning = '';
       if (succeeded.length > 0) {
         if (selectedPromo) removePromoFromUser(selectedPromo);
         succeeded.forEach(({ item }) => removeFromCart(item.id));
+
+        // Адрес из формы передаём в сервис доставки. Ошибка отслеживания не должна
+        // отменять уже оплаченные заказы, поэтому показываем её отдельно.
+        const shipmentResults = await Promise.allSettled(succeeded.map(({ order }) => createShipment({
+          orderId: order.id,
+          customerId: user.id,
+          address: delivery.address,
+        })));
+        const failedShipments = shipmentResults.filter((entry) => entry.status === 'rejected').length;
+        if (failedShipments > 0) {
+          shipmentWarning = `Не удалось создать отслеживание для ${failedShipments} из ${succeeded.length} заказ(ов). Адрес: ${delivery.address}.`;
+        }
       }
 
-      setResult({ succeeded, failed });
+      setResult({ succeeded, failed, shipmentWarning });
 
       if (failed.length > 0 && succeeded.length === 0) {
         setOrderError(
@@ -643,6 +658,12 @@ export default function Checkout() {
             {result.succeeded.length > 0 && (
               <div className="badge badge-success" style={{ alignSelf: 'center', flexWrap: 'wrap' }}>
                 Номера заказов: {result.succeeded.map(({ order }) => `#${order.id}`).join(', ')}
+              </div>
+            )}
+
+            {result.shipmentWarning && (
+              <div className="card" role="status" style={{ borderColor: 'var(--warning, #f5a524)', textAlign: 'left' }}>
+                <p className="small" style={{ margin: 0 }}>{result.shipmentWarning}</p>
               </div>
             )}
 

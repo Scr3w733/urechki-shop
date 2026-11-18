@@ -69,13 +69,29 @@ export default function CartSidebar() {
                         <Link to={`/product/${item.id}`} onClick={() => setIsCartOpen(false)} className="product-title">{item.name}</Link>
                         <span className="text-accent bold small">{formatPrice(item.price)}</span>
                         <div className="qty">
-                          <button onClick={() => updateQuantity(item.id, -1)} aria-label="Уменьшить"><Minus size={14} /></button>
+                          <button
+                            onClick={() => updateQuantity(item.id, -1)}
+                            disabled={item.quantity <= 1}
+                            aria-label={`Уменьшить количество товара ${item.name}`}
+                          >
+                            <Minus size={14} />
+                          </button>
                           <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            inputMode="numeric"
                             value={item.quantity}
                             onChange={e => setQuantity(item.id, e.target.value)}
-                            aria-label="Количество"
+                            aria-label={`Количество товара ${item.name}`}
                           />
-                          <button onClick={() => updateQuantity(item.id, 1)} aria-label="Увеличить"><Plus size={14} /></button>
+                          <button
+                            onClick={() => updateQuantity(item.id, 1)}
+                            disabled={item.quantity >= 100}
+                            aria-label={`Увеличить количество товара ${item.name}`}
+                          >
+                            <Plus size={14} />
+                          </button>
                         </div>
                       </div>
                       <button className="icon-btn" onClick={() => removeFromCart(item.id)} title="Удалить" aria-label="Удалить товар"><Trash2 size={16} color="var(--danger)" /></button>

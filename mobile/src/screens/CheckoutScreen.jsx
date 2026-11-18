@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, normalizeError } from '../api';
-import { PROMO_CODES } from '../config';
+import { PROMO_CODES, promoDiscountFor } from '../config';
 import { colors, fonts, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -41,10 +41,19 @@ export default function CheckoutScreen({ navigation }) {
         <View style={styles.successIcon}>
           <Ionicons name="checkmark-circle" size={46} color={colors.success} />
         </View>
-        <Text style={styles.successTitle}>Заказ оформлен</Text>
+        <Text style={styles.successTitle}>
+          {result.failed?.length ? 'Часть заказа оформлена' : 'Заказ оформлен'}
+        </Text>
         <Text style={styles.successText}>
           Сервер подтвердил {result.orders.length} позиц. на общую сумму {result.total.toLocaleString('ru-RU')} ₽.
         </Text>
+        {result.failed?.length ? (
+          <Card style={styles.block}>
+            <Text style={styles.label}>Не оформленные позиции</Text>
+            {result.failed.map((line) => <Text key={line} style={styles.hint}>• {line}</Text>)}
+            <Text style={styles.hint}>Они остались в корзине — можно повторить оформление.</Text>
+          </Card>
+        ) : null}
         {result.orders.map((order) => (
           <Card key={order.id} style={styles.orderCard}>
             <Text style={styles.orderTitle}>Заказ №{order.id}</Text>
@@ -77,9 +86,7 @@ export default function CheckoutScreen({ navigation }) {
     setError('');
     api.trackEvent({ type: 'checkout_start', customerId: user.id, amount: cart.baseTotal });
     try {
-      const created = [];
-      for (let index = 0; index < cart.items.length; index += 1) {
-        const item = cart.items[index];
+      const payloads = cart.items.map((item, index) => {
         const payload = {
           customerId: Number(user.id),
           productId: item.productId,
@@ -92,9 +99,36 @@ export default function CheckoutScreen({ navigation }) {
           if (cart.promoCode) payload.promoCode = cart.promoCode;
           if (cart.bonusSpent > 0) payload.bonusSpent = cart.bonusSpent;
         }
-        const order = await api.createOrder(payload);
-        created.push(order);
-        api.trackEvent({ type: 'order_created', customerId: user.id, productId: item.productId, amount: Number(order.finalPrice) });
+        return payload;
+      });
+
+      // Отправляем позиции параллельно и убираем из корзины только те,
+      // которые сервер действительно создал. Повторная попытка не продублирует
+      // уже оплаченные заказы.
+      const responses = await Promise.allSettled(payloads.map((payload) => api.createOrder(payload)));
+      const created = [];
+      const failed = [];
+      responses.forEach((response, index) => {
+        const item = cart.items[index];
+        if (response.status === 'fulfilled' && response.value?.id != null) {
+          created.push(response.value);
+          api.trackEvent({
+            type: 'order_created',
+            customerId: user.id,
+            productId: item.productId,
+            amount: Number(response.value.finalPrice),
+          });
+          return;
+        }
+        const reason = response.status === 'rejected'
+          ? normalizeError(response.reason, 'Ошибка сервера')
+          : 'Сервер не вернул номер заказа';
+        failed.push(`${item.name}: ${reason}`);
+      });
+
+      if (created.length === 0) {
+        setError(failed.length > 0 ? `Не удалось оформить заказ. ${failed.join('; ')}` : 'Не удалось оформить заказ.');
+        return;
       }
 
       if (address.trim() && created[0]?.id) {
@@ -111,8 +145,12 @@ export default function CheckoutScreen({ navigation }) {
       }
 
       const total = created.reduce((sum, order) => sum + Number(order.finalPrice || 0), 0);
-      await cart.clear();
-      setResult({ orders: created, total });
+      for (const index of responses.keys()) {
+        if (responses[index].status === 'fulfilled' && responses[index].value?.id != null) {
+          await cart.remove(cart.items[index].productId);
+        }
+      }
+      setResult({ orders: created, total, failed });
     } catch (err) {
       setError(normalizeError(err, 'Не удалось оформить заказ.'));
     } finally {
@@ -172,7 +210,13 @@ export default function CheckoutScreen({ navigation }) {
         </View>
         <TextInput
           value={String(cart.bonusSpent || '')}
-          onChangeText={(text) => cart.setBonusSpent(text.replace(/\D/g, ''))}
+          onChangeText={(text) => {
+            const available = Number(user.bonusPoints) || 0;
+            const afterPromo = Math.max(0, cart.baseTotal - promoDiscountFor(cart.promoCode, cart.baseTotal));
+            const limit = Math.max(0, Math.min(available, Math.floor(afterPromo)));
+            const digits = Number(text.replace(/\D/g, '')) || 0;
+            cart.setBonusSpent(Math.min(digits, limit));
+          }}
           placeholder="Списать бонусов"
           placeholderTextColor={colors.dim}
           keyboardType="numeric"

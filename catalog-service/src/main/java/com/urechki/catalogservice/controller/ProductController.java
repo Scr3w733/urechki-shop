@@ -149,15 +149,18 @@ public class ProductController {
         if (delta == null || delta == 0) {
             throw new IllegalArgumentException("Укажите ненулевое quantity");
         }
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден"));
-        int current = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
-        int next = current + delta;
-        if (next < 0) {
+        if (Math.abs(delta) > 100) {
+            throw new IllegalArgumentException("quantity должен быть в диапазоне от -100 до 100");
+        }
+        if (!productRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден");
+        }
+        int updated = productRepository.adjustStock(id, delta);
+        if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Недостаточно товара на складе");
         }
-        product.setStockQuantity(next);
-        return productRepository.save(product);
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден"));
     }
 
     private void validate(Product product) {

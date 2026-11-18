@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -20,7 +21,10 @@ import java.util.Map;
 public class NotificationController {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
+    private static final int HISTORY_LIMIT = 200;
+    private static final int MESSAGE_LIMIT = 2000;
     private final List<Map<String, Object>> history = Collections.synchronizedList(new ArrayList<>());
+    private final AtomicLong sequence = new AtomicLong();
 
     @GetMapping("/health")
     public Map<String, Object> health() {
@@ -38,14 +42,19 @@ public class NotificationController {
         if (message.isEmpty()) {
             throw new IllegalArgumentException("Текст уведомления не может быть пустым");
         }
+        if (message.length() > MESSAGE_LIMIT) {
+            throw new IllegalArgumentException("Текст уведомления слишком длинный");
+        }
 
         Map<String, Object> record = new LinkedHashMap<>();
-        record.put("id", history.size() + 1);
-        record.put("email", email.toLowerCase(Locale.ROOT));
-        record.put("message", message);
-        record.put("sentAt", Instant.now().toString());
-        history.add(record);
-        if (history.size() > 200) history.remove(0);
+        synchronized (history) {
+            record.put("id", sequence.incrementAndGet());
+            record.put("email", email.toLowerCase(Locale.ROOT));
+            record.put("message", message);
+            record.put("sentAt", Instant.now().toString());
+            history.add(record);
+            if (history.size() > HISTORY_LIMIT) history.remove(0);
+        }
 
         log.info("Уведомление отправлено на {}: {}", email, message);
         return Map.of("sent", true, "id", record.get("id"));
@@ -64,7 +73,10 @@ public class NotificationController {
 
     @DeleteMapping
     public Map<String, Object> clearHistory() {
-        history.clear();
+        log.warn("История уведомлений очищена через ADMIN API");
+        synchronized (history) {
+            history.clear();
+        }
         return Map.of("cleared", true);
     }
 }

@@ -17,6 +17,7 @@ export default function ProductScreen({ route, navigation }) {
   const [similar, setSimilar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [favoriteError, setFavoriteError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [favorite, setFavorite] = useState(false);
 
@@ -54,6 +55,12 @@ export default function ProductScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    setQuantity(1);
+    setFavorite(false);
+    setFavoriteError('');
+  }, [id]);
+
   const toggleFavorite = async () => {
     if (!user?.id) {
       navigation.navigate('Login');
@@ -64,7 +71,8 @@ export default function ProductScreen({ route, navigation }) {
       else await api.addFavorite(user.id, id);
       setFavorite(!favorite);
     } catch (err) {
-      setError(err.message || 'Не удалось обновить избранное.');
+      // Ошибка избранного не должна заменять сам товар экраном «Повторить».
+      setFavoriteError(err.message || 'Не удалось обновить избранное.');
     }
   };
 
@@ -82,6 +90,7 @@ export default function ProductScreen({ route, navigation }) {
   }
 
   const inStock = product.inStock !== false && Number(product.stockQuantity ?? 1) > 0;
+  const maxQuantity = inStock ? Math.max(1, Number(product.stockQuantity) || 1) : 0;
   const specs = asArray(product.specs, ['specs', 'items']);
 
   return (
@@ -100,6 +109,8 @@ export default function ProductScreen({ route, navigation }) {
           {inStock ? `В наличии: ${product.stockQuantity ?? '—'}` : 'Нет в наличии'}
         </Badge>
       </View>
+
+      {favoriteError ? <Text style={styles.favoriteError}>{favoriteError}</Text> : null}
 
       <Price value={product.price} style={styles.price} />
 
@@ -123,14 +134,23 @@ export default function ProductScreen({ route, navigation }) {
       <View style={styles.block}>
         <SectionTitle title="Количество" />
         <View style={styles.quantityRow}>
-          <TouchableOpacity style={styles.quantityButton} onPress={() => setQuantity(Math.max(1, quantity - 1))}>
+          <TouchableOpacity
+            style={[styles.quantityButton, quantity <= 1 && styles.quantityDisabled]}
+            disabled={quantity <= 1}
+            onPress={() => setQuantity(Math.max(1, quantity - 1))}
+          >
             <Ionicons name="remove" size={20} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.quantityValue}>{quantity}</Text>
-          <TouchableOpacity style={styles.quantityButton} onPress={() => setQuantity(quantity + 1)}>
+          <TouchableOpacity
+            style={[styles.quantityButton, quantity >= maxQuantity && styles.quantityDisabled]}
+            disabled={quantity >= maxQuantity}
+            onPress={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+          >
             <Ionicons name="add" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
+        <Text style={styles.hint}>Доступно: {maxQuantity} шт. Не больше остатка на складе.</Text>
       </View>
 
       {similar.length > 0 && (
@@ -174,6 +194,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', padding: 18 },
   errorCard: { gap: 14 },
   errorText: { color: colors.danger, fontFamily: fonts.body, fontSize: 14 },
+  favoriteError: { color: colors.danger, fontFamily: fonts.body, fontSize: 12, marginTop: 8 },
+  hint: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, marginTop: 8 },
   artWrap: { alignItems: 'center', position: 'relative', marginVertical: 10 },
   favButton: { position: 'absolute', top: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
   title: { color: colors.text, fontFamily: fonts.displayMedium, fontSize: 21, lineHeight: 28, marginTop: 14 },
@@ -187,6 +209,7 @@ const styles = StyleSheet.create({
   specNote: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   quantityRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   quantityButton: { width: 42, height: 42, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  quantityDisabled: { opacity: 0.4 },
   quantityValue: { color: colors.text, fontFamily: fonts.displayMedium, fontSize: 20, minWidth: 34, textAlign: 'center' },
   similarRow: {
     flexDirection: 'row',

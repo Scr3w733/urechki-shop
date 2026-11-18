@@ -6,16 +6,39 @@ import { colors, fonts, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { Button, Card, Chip } from '../components/ui';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function LoginScreen({ navigation }) {
   const { login, register } = useAuth();
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const update = (key) => (value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key) => (value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+    setError('');
+  };
+
+  const validate = () => {
+    const next = {};
+    if (mode === 'register' && form.name.trim().length < 2) {
+      next.name = 'Укажите имя (минимум 2 символа)';
+    }
+    if (!EMAIL_RE.test(form.email.trim())) {
+      next.email = 'Введите корректный email';
+    }
+    if (form.password.length < 4) {
+      next.password = 'Пароль должен быть не короче 4 символов';
+    }
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
   const submit = async () => {
+    if (!validate()) return;
     setBusy(true);
     setError('');
     try {
@@ -50,19 +73,19 @@ export default function LoginScreen({ navigation }) {
         <Text style={styles.subtitle}>Войдите, чтобы копить бонусы и отслеживать заказы</Text>
 
         <View style={styles.modes}>
-          <Chip label="Вход" active={mode === 'login'} onPress={() => { setMode('login'); setError(''); }} />
-          <Chip label="Регистрация" active={mode === 'register'} onPress={() => { setMode('register'); setError(''); }} />
+          <Chip label="Вход" active={mode === 'login'} onPress={() => { setMode('login'); setError(''); setFieldErrors({}); }} />
+          <Chip label="Регистрация" active={mode === 'register'} onPress={() => { setMode('register'); setError(''); setFieldErrors({}); }} />
         </View>
 
         <Card style={styles.form}>
           {mode === 'register' && (
-            <Input label="Имя" value={form.name} onChangeText={update('name')} placeholder="Как к вам обращаться" />
+            <Input label="Имя" value={form.name} onChangeText={update('name')} placeholder="Как к вам обращаться" error={fieldErrors.name} />
           )}
-          <Input label="Email" value={form.email} onChangeText={update('email')} placeholder="mail@example.ru" keyboardType="email-address" autoCapitalize="none" />
+          <Input label="Email" value={form.email} onChangeText={update('email')} placeholder="mail@example.ru" keyboardType="email-address" autoCapitalize="none" error={fieldErrors.email} />
           {mode === 'register' && (
             <Input label="Телефон" value={form.phone} onChangeText={update('phone')} placeholder="+7 ..." keyboardType="phone-pad" />
           )}
-          <Input label="Пароль" value={form.password} onChangeText={update('password')} placeholder="Не короче 4 символов" secureTextEntry />
+          <Input label="Пароль" value={form.password} onChangeText={update('password')} placeholder="Не короче 4 символов" secureTextEntry error={fieldErrors.password} />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -79,7 +102,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-function Input({ label, value, onChangeText, placeholder, secureTextEntry, keyboardType, autoCapitalize }) {
+function Input({ label, value, onChangeText, placeholder, secureTextEntry, keyboardType, autoCapitalize, error }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
@@ -91,8 +114,9 @@ function Input({ label, value, onChangeText, placeholder, secureTextEntry, keybo
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
-        style={styles.input}
+        style={[styles.input, error && styles.inputError]}
       />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -108,6 +132,7 @@ const styles = StyleSheet.create({
   field: { gap: 6 },
   label: { color: colors.muted, fontFamily: fonts.bodySemi, fontSize: 12 },
   input: { minHeight: 46, backgroundColor: colors.bgSoft, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, color: colors.text, fontFamily: fonts.body, fontSize: 14, paddingHorizontal: 12 },
+  inputError: { borderColor: colors.danger },
   error: { color: colors.danger, fontFamily: fonts.body, fontSize: 13 },
   hint: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, textAlign: 'center', marginTop: 18, lineHeight: 16 },
 });

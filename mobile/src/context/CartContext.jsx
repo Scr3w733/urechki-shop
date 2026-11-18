@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../api';
+import { promoDiscountFor } from '../config';
 
 const STORAGE_KEY = 'urechki_mobile_cart';
 const CartContext = createContext(null);
@@ -95,7 +96,10 @@ export function CartProvider({ children }) {
 
   const count = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
   const baseTotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
-  const estimatedTotal = useMemo(() => Math.max(0, baseTotal - bonusSpent), [baseTotal, bonusSpent]);
+  const estimatedTotal = useMemo(() => {
+    const afterPromo = Math.max(0, baseTotal - promoDiscountFor(promoCode, baseTotal));
+    return Math.max(0, afterPromo - Math.min(Math.max(0, bonusSpent), afterPromo));
+  }, [baseTotal, bonusSpent, promoCode]);
 
   const value = useMemo(() => ({
     items,

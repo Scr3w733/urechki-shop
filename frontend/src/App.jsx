@@ -81,7 +81,7 @@ function RouteLoader() {
 }
 
 function PromoPill() {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState(null);
   const [userName, setUserName] = useState(null);
   const [hidden, setHidden] = useState(false);
 
@@ -99,13 +99,32 @@ function PromoPill() {
   }, []);
 
   const copyToClipboard = async () => {
+    let copied = false;
     try {
-      await navigator.clipboard.writeText('URE4KA');
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText('URE4KA');
+        copied = true;
+      }
     } catch {
-      setCopied(false);
+      copied = false;
     }
+    if (!copied) {
+      // Fallback для HTTP-сборок, где Clipboard API недоступен.
+      try {
+        const field = document.createElement('textarea');
+        field.value = 'URE4KA';
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        copied = document.execCommand('copy');
+        field.remove();
+      } catch {
+        copied = false;
+      }
+    }
+    setCopyStatus(copied ? 'copied' : 'error');
+    setTimeout(() => setCopyStatus(null), 2500);
   };
 
   if (hidden) return null;
@@ -116,13 +135,11 @@ function PromoPill() {
       animate={{ x: 0, opacity: 1 }}
       transition={{ delay: 1.8, type: 'spring' }}
       className="promo-pill"
-      onClick={copyToClipboard}
       whileHover={{ scale: 1.03, x: 4 }}
     >
       <button
         className="promo-pill-close"
-        onClick={(e) => {
-          e.stopPropagation();
+        onClick={() => {
           setHidden(true);
           localStorage.setItem('urechki_promo_hidden', '1');
         }}
@@ -130,16 +147,31 @@ function PromoPill() {
       >
         <X size={13} />
       </button>
-      <Gift size={22} color="#1a1608" style={{ flexShrink: 0 }} />
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '0.68rem', color: '#1a1608', fontWeight: 800 }}>
-          {userName ? `Для ${userName}` : 'Промокод'}
+      <button
+        type="button"
+        className="promo-pill-main"
+        onClick={copyToClipboard}
+        aria-label="Скопировать промокод URE4KA"
+        title={copyStatus === 'error' ? 'Не удалось скопировать — выделите код вручную' : 'Нажмите, чтобы скопировать'}
+      >
+        <Gift size={22} color="#1a1608" style={{ flexShrink: 0 }} />
+        <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+          <span style={{ fontSize: '0.68rem', color: '#1a1608', fontWeight: 800 }}>
+            {userName ? `Для ${userName}` : 'Промокод'}
+          </span>
+          <span style={{ fontSize: '1.05rem', color: '#1a1608', fontWeight: 800, letterSpacing: '1px' }}>URE4KA</span>
         </span>
-        <span style={{ fontSize: '1.05rem', color: '#1a1608', fontWeight: 800, letterSpacing: '1px' }}>URE4KA</span>
-      </div>
-      <div style={{ background: '#1a1608', padding: 6, borderRadius: '50%', display: 'flex', marginLeft: 'auto' }}>
-        {copied ? <Check size={15} color="var(--accent)" /> : <Copy size={15} color="var(--accent)" />}
-      </div>
+        <span className="promo-pill-icon" aria-hidden="true">
+          {copyStatus === 'copied'
+            ? <Check size={15} color="var(--accent)" />
+            : copyStatus === 'error'
+              ? <X size={15} color="#ff6b6b" />
+              : <Copy size={15} color="var(--accent)" />}
+        </span>
+        <span className="sr-only" role="status">
+          {copyStatus === 'copied' ? 'Промокод скопирован' : copyStatus === 'error' ? 'Не удалось скопировать промокод' : ''}
+        </span>
+      </button>
     </motion.div>
   );
 }

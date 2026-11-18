@@ -18,6 +18,7 @@ const SORT_OPTIONS = [
 export default function CatalogScreen({ navigation, route }) {
   const initialSearch = route?.params?.search || '';
   const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [category, setCategory] = useState('Все');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -27,11 +28,19 @@ export default function CatalogScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
+  // Не дёргаем API на каждый символ: запрос уходит после паузы в вводе
+  // или сразу по нажатию Enter (см. onSubmitEditing).
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const load = useCallback(async (searchOverride) => {
+    const query = searchOverride === undefined ? debouncedSearch : searchOverride;
     setLoading(true);
     setError('');
     try {
-      const payload = await api.catalog({ category: category === 'Все' ? undefined : category, search, limit: 200 });
+      const payload = await api.catalog({ category: category === 'Все' ? undefined : category, search: query, limit: 200 });
       setProducts(asArray(payload, ['products', 'items']));
       setCategories(asArray(payload, ['categories']).map(String));
       setVisible(PAGE_SIZE);
@@ -41,7 +50,7 @@ export default function CatalogScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [category, search]);
+  }, [category, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -85,7 +94,7 @@ export default function CatalogScreen({ navigation, route }) {
           placeholderTextColor={colors.dim}
           style={styles.searchInput}
           returnKeyType="search"
-          onSubmitEditing={load}
+          onSubmitEditing={() => load(search)}
         />
         {search ? (
           <Ionicons name="close-circle" size={18} color={colors.muted} onPress={() => setSearch('')} />

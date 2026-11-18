@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useCallback } from 'react';
+import { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
 
@@ -6,28 +6,40 @@ const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
+  const nextId = useRef(1);
+  const timers = useRef(new Map());
 
-  const addNotification = useCallback((message, type = 'success') => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 4000);
+  const removeNotification = useCallback((id) => {
+    const timer = timers.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
+    setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
+  const addNotification = useCallback((message, type = 'success') => {
+    const id = nextId.current++;
+    setNotifications(prev => [...prev, { id, message, type }]);
+    const timer = setTimeout(() => removeNotification(id), 4000);
+    timers.current.set(id, timer);
+  }, [removeNotification]);
+
+  useEffect(() => () => {
+    timers.current.forEach((timer) => clearTimeout(timer));
+    timers.current.clear();
+  }, []);
 
   return (
     <NotificationContext.Provider value={{ addNotification }}>
       {children}
-      
+
       <div style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 999999, display: 'flex', flexDirection: 'column', gap: '10px', pointerEvents: 'none' }}>
         <AnimatePresence>
           {notifications.map(notif => (
             <motion.div
               key={notif.id}
+              role="status"
               initial={{ opacity: 0, x: 50, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 50, scale: 0.9 }}
@@ -40,9 +52,16 @@ export function NotificationProvider({ children }) {
               {notif.type === 'success' && <CheckCircle color="var(--accent)" size={24} />}
               {notif.type === 'error' && <AlertTriangle color="#ff4444" size={24} />}
               {notif.type === 'info' && <Info color="#00d2ff" size={24} />}
-              
+
               <span style={{ color: '#fff', flex: 1, fontSize: '0.95rem' }}>{notif.message}</span>
-              <X size={18} color="#888" style={{ cursor: 'pointer' }} onClick={() => removeNotification(notif.id)} />
+              <button
+                type="button"
+                aria-label="Закрыть уведомление"
+                onClick={() => removeNotification(notif.id)}
+                style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={18} color="#888" />
+              </button>
             </motion.div>
           ))}
         </AnimatePresence>

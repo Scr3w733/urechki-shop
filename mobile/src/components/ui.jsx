@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -48,16 +49,13 @@ export function Button({ children, onPress, variant = 'primary', disabled, loadi
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={variant === 'primary' ? colors.onAccent : colors.text} />
-      ) : (
-        <>
-          {icon && <Ionicons name={icon} size={18} color={variant === 'primary' ? colors.onAccent : colors.text} />}
-          <Text style={[styles.buttonText, { color: variant === 'primary' ? colors.onAccent : colors.text }, textStyle]}>
-            {children}
-          </Text>
-        </>
+      {loading && <ActivityIndicator size="small" color={variant === 'primary' ? colors.onAccent : colors.text} />}
+      {icon && !loading && (
+        <Ionicons name={icon} size={18} color={variant === 'primary' ? colors.onAccent : colors.text} />
       )}
+      <Text style={[styles.buttonText, { color: variant === 'primary' ? colors.onAccent : colors.text }, textStyle]}>
+        {children}
+      </Text>
     </TouchableOpacity>
   );
 }
