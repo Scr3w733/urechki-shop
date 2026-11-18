@@ -24,9 +24,6 @@
     },
     "plugins": [
       "expo-font"
-    ],
-    "extra": {
-      "apiOrigin": "http://localhost"
-    }
+    ]
   }
 }

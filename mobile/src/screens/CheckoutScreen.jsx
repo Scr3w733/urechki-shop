@@ -107,11 +107,13 @@ export default function CheckoutScreen({ navigation }) {
       // уже оплаченные заказы.
       const responses = await Promise.allSettled(payloads.map((payload) => api.createOrder(payload)));
       const created = [];
+      const succeededProductIds = [];
       const failed = [];
       responses.forEach((response, index) => {
         const item = cart.items[index];
         if (response.status === 'fulfilled' && response.value?.id != null) {
           created.push(response.value);
+          succeededProductIds.push(item.productId);
           api.trackEvent({
             type: 'order_created',
             customerId: user.id,
@@ -145,11 +147,7 @@ export default function CheckoutScreen({ navigation }) {
       }
 
       const total = created.reduce((sum, order) => sum + Number(order.finalPrice || 0), 0);
-      for (const index of responses.keys()) {
-        if (responses[index].status === 'fulfilled' && responses[index].value?.id != null) {
-          await cart.remove(cart.items[index].productId);
-        }
-      }
+      await cart.removeMany(succeededProductIds);
       setResult({ orders: created, total, failed });
     } catch (err) {
       setError(normalizeError(err, 'Не удалось оформить заказ.'));

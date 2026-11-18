@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Copy, Check, Gift, X } from 'lucide-react';
@@ -84,6 +84,9 @@ function PromoPill() {
   const [copyStatus, setCopyStatus] = useState(null);
   const [userName, setUserName] = useState(null);
   const [hidden, setHidden] = useState(false);
+  const statusTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(statusTimer.current), []);
 
   useEffect(() => {
     try {
@@ -124,7 +127,8 @@ function PromoPill() {
       }
     }
     setCopyStatus(copied ? 'copied' : 'error');
-    setTimeout(() => setCopyStatus(null), 2500);
+    clearTimeout(statusTimer.current);
+    statusTimer.current = setTimeout(() => setCopyStatus(null), 2500);
   };
 
   if (hidden) return null;

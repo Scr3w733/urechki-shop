@@ -94,7 +94,7 @@ export default function CatalogScreen({ navigation, route }) {
           placeholderTextColor={colors.dim}
           style={styles.searchInput}
           returnKeyType="search"
-          onSubmitEditing={() => load(search)}
+          onSubmitEditing={() => setDebouncedSearch(search)}
         />
         {search ? (
           <Ionicons name="close-circle" size={18} color={colors.muted} onPress={() => setSearch('')} />
